@@ -1,0 +1,408 @@
+import debug from "debug";
+import {isAbsolute, resolve} from "path";
+import LevelDOWN from "leveldown";
+import MemDOWN from "memdown";
+import {
+    IPipeProcMessage,
+
+    IPipeProcLogMessage,
+    IPipeProcProcMessage,
+    IPipeProcRangeMessage,
+    IPipeProcSystemInitMessage,
+    IPipeProcAckMessage,
+    IPipeProcAckLogMessage,
+    IPipeProcInspectProcMessage,
+    IPipeProcDestroyProcMessage,
+    IPipeProcDisableProcMessage,
+    IPipeProcResumeProcMessage,
+    IPipeProcReclaimProcMessage,
+    IPipeProcSystemProcMessage,
+
+    IPipeProcLogMessageReply,
+    IPipeProcProcMessageReply,
+    IPipeProcRangeMessageReply,
+    IPipeProcAckMessageReply,
+    IPipeProcAckLogMessageReply,
+    IPipeProcInspectProcMessageReply,
+    IPipeProcDestroyProcMessageReply,
+    IPipeProcDisableProcMessageReply,
+    IPipeProcResumeProcMessageReply,
+    IPipeProcReclaimProcMessageReply,
+    IPipeProcSystemProcMessageReply
+} from "../common/messages";
+import {commitLog} from "./commitLog";
+import {restoreState} from "./restoreState";
+import {runShutdownHooks} from "./shutdown";
+import {getRange} from "./getRange";
+import {proc, IProc} from "./proc";
+import {systemProc, ISystemProc} from "./systemProc";
+import {IWorker, spawnWorkers} from "./workerManager";
+import {ack} from "./ack";
+import {ackCommitLog} from "./ackCommitLog";
+import {destroyProc} from "./destroyProc";
+import {initializeMessages, registerMessage, IMessageRegistry} from "./messaging";
+import {IWriteBuffer, startWriteBuffer} from "./writeBuffer";
+import {disableProc, resumeProc} from "./resumeDisableProc";
+import {reclaimProc} from "./reclaimProc";
+
+const d = debug("pipeproc:node");
+
+let db: LevelDOWN.LevelDown;
+
+export interface IActiveTopics {
+    [key: string]: {
+        currentTone: number,
+        createdAt: number
+    };
+}
+
+export interface ISystemState {
+    active: boolean;
+}
+const activeTopics: IActiveTopics = {};
+
+const systemState: ISystemState = {active: false};
+
+const messageRegistry: IMessageRegistry = {};
+
+const writeBuffer: IWriteBuffer = [];
+
+const activeProcs: IProc[] = [];
+
+const activeSystemProcs: ISystemProc[] = [];
+
+const activeWorkers: IWorker[] = [];
+
+registerMessage<IPipeProcSystemInitMessage["data"], IPipeProcMessage["data"]>(messageRegistry, {
+    messageType: "system_init",
+    replySuccess: "system_ready",
+    replyError: "system_ready_error",
+    writeOp: true,
+    listener: function(
+        data,
+        callback
+    ) {
+        if (systemState.active) {
+            return callback("system_already_active");
+        }
+        d("starting up...");
+        if (data.options.memory) {
+            d("using in-memory adapter");
+            db = MemDOWN();
+        } else {
+            d("using disk adapter");
+            if (data.options.location) {
+                let location: string;
+                if (isAbsolute(data.options.location)) {
+                    location = data.options.location;
+                } else {
+                    location = resolve(data.options.location);
+                }
+                d("data location:", location);
+                db = LevelDOWN(location);
+            } else {
+                db = LevelDOWN("./pipeproc");
+            }
+        }
+        restoreState(
+            db,
+            activeTopics,
+            systemState,
+            activeProcs,
+            activeSystemProcs,
+            data.options.memory,
+        function(err) {
+            if (err) {
+                callback((err && err.message) || "uknown_error");
+            } else {
+                spawnWorkers(
+                    data.options.workers || 0,
+                    activeWorkers, activeProcs, activeSystemProcs,
+                function(spawnErr) {
+                    if (err) {
+                        callback((spawnErr && spawnErr.message) || "uknown_error");
+                    } else {
+                        callback();
+                    }
+                });
+            }
+        });
+    }
+});
+
+registerMessage<IPipeProcMessage["data"], IPipeProcMessage["data"]>(messageRegistry, {
+    messageType: "system_shutdown",
+    replySuccess: "system_closed",
+    replyError: "system_closed_error",
+    writeOp: true,
+    listener: function(
+        _data,
+        callback
+    ) {
+        d("shutting down...");
+        runShutdownHooks(db, systemState, function(err) {
+            if (err) {
+                callback((err && err.message) || "uknown_error");
+                process.exit(1);
+            } else {
+                callback();
+                process.exit(0);
+            }
+        });
+    }
+});
+
+registerMessage<IPipeProcLogMessage["data"], IPipeProcLogMessageReply["data"]>(messageRegistry, {
+    messageType: "commit",
+    replySuccess: "commit_completed",
+    replyError: "commit_error",
+    writeOp: true,
+    listener: function(
+        data,
+        callback
+    ) {
+        commitLog(db, activeTopics, data.commitLog, function(err, id) {
+            if (err) {
+                callback((err && err.message) || "uknown_error");
+            } else {
+                if (id) {
+                    callback(null, {id: id});
+                } else {
+                    callback("uncommited");
+                }
+            }
+        });
+    }
+});
+
+registerMessage<IPipeProcRangeMessage["data"], IPipeProcRangeMessageReply["data"]>(messageRegistry, {
+    messageType: "get_range",
+    replySuccess: "range_reply",
+    replyError: "range_error",
+    writeOp: false,
+    listener: function(
+        data,
+        callback
+    ) {
+        getRange(
+            db,
+            activeTopics,
+            data.topic,
+            data.options.start,
+            data.options.end,
+            data.options.limit,
+            data.options.exclusive,
+            data.options.reverse,
+        function(err, results) {
+            if (err) {
+                callback((err && err.message) || "uknown_error");
+            } else {
+                if (results) {
+                    callback(null, {results});
+                } else {
+                    callback();
+                }
+            }
+        });
+    }
+});
+
+registerMessage<IPipeProcProcMessage["data"], IPipeProcProcMessageReply["data"]>(messageRegistry, {
+    messageType: "proc",
+    replySuccess: "proc_ok",
+    replyError: "proc_error",
+    writeOp: true,
+    listener: function(
+        data,
+        callback
+    ) {
+        proc(db, activeProcs, activeTopics, data.options, function(err, log) {
+            if (err) {
+                callback((err && err.message) || "uknown_error");
+            } else {
+                if (log) {
+                    callback(null, log);
+                } else {
+                    callback();
+                }
+            }
+        });
+    }
+});
+
+registerMessage<IPipeProcSystemProcMessage["data"], IPipeProcSystemProcMessageReply["data"]>(messageRegistry, {
+    messageType: "system_proc",
+    replySuccess: "system_proc_ok",
+    replyError: "system_proc_error",
+    writeOp: true,
+    listener: function(
+        data,
+        callback
+    ) {
+        systemProc(db, activeProcs, activeSystemProcs, activeWorkers, data.options, function(err, myProc) {
+            if (err) {
+                callback((err && err.message) || "uknown_error");
+            } else {
+                callback(null, {proc: myProc});
+            }
+        });
+    }
+});
+
+registerMessage<IPipeProcAckMessage["data"], IPipeProcAckMessageReply["data"]>(messageRegistry, {
+    messageType: "ack",
+    replySuccess: "ack_ok",
+    replyError: "ack_error",
+    writeOp: true,
+    listener: function(
+        data,
+        callback
+    ) {
+        ack(db, activeProcs, data.procName, function(err, ackedLogId) {
+            if (err) {
+                callback((err && err.message) || "uknown_error");
+            } else {
+                if (ackedLogId) {
+                    callback(null, {id: ackedLogId});
+                } else {
+                    callback("invalid_ack");
+                }
+            }
+        });
+    }
+});
+
+registerMessage<IPipeProcAckLogMessage["data"], IPipeProcAckLogMessageReply["data"]>(messageRegistry, {
+    messageType: "ack_commit",
+    replySuccess: "ack_commit_completed",
+    replyError: "ack_commit_error",
+    writeOp: true,
+    listener: function(
+        data,
+        callback
+    ) {
+        ackCommitLog(db, activeTopics, activeProcs, data.procName, data.commitLog, function(err, status) {
+            if (err) {
+                callback((err && err.message) || "uknown_error");
+            } else {
+                const ackedLogId = status[0];
+                const commitedId = status[1];
+                if (status && ackedLogId && commitedId) {
+                    callback(null, {ackedLogId: ackedLogId, id: commitedId});
+                } else {
+                    callback("invalid_ack_or_commit");
+                }
+            }
+        });
+    }
+});
+
+registerMessage<IPipeProcInspectProcMessage["data"], IPipeProcInspectProcMessageReply["data"]>(messageRegistry, {
+    messageType: "inspect_proc",
+    replySuccess: "inspect_proc_reply",
+    replyError: "inspect_proc_error",
+    writeOp: false,
+    listener: function(
+        data,
+        callback
+    ) {
+        const myProc = activeProcs.find(p => p.name === data.procName);
+        d("proc inspection request:", data.procName);
+        if (myProc) {
+            callback(null, {proc: myProc});
+        } else {
+            callback("invalid_proc");
+        }
+    }
+});
+
+registerMessage<IPipeProcDestroyProcMessage["data"], IPipeProcDestroyProcMessageReply["data"]>(messageRegistry, {
+    messageType: "destroy_proc",
+    replySuccess: "destroy_proc_ok",
+    replyError: "destroy_proc_error",
+    writeOp: true,
+    listener: function(
+        data,
+        callback
+    ) {
+        destroyProc(db, activeProcs, data.procName, function(err, myProc) {
+            if (err) {
+                callback((err && err.message) || "uknown_error");
+            } else {
+                if (myProc) {
+                    callback(null, {proc: myProc});
+                } else {
+                    callback("invalid_proc");
+                }
+            }
+        });
+    }
+});
+
+registerMessage<IPipeProcDisableProcMessage["data"], IPipeProcDisableProcMessageReply["data"]>(messageRegistry, {
+    messageType: "disable_proc",
+    replySuccess: "disable_proc_ok",
+    replyError: "disable_proc_error",
+    writeOp: true,
+    listener: function(
+        data,
+        callback
+    ) {
+        disableProc(db, activeProcs, data.procName, function(err, myProc) {
+            if (err) {
+                callback((err && err.message) || "uknown_error");
+            } else {
+                if (myProc) {
+                    callback(null, {proc: myProc});
+                } else {
+                    callback("invalid_proc");
+                }
+            }
+        });
+    }
+});
+
+registerMessage<IPipeProcResumeProcMessage["data"], IPipeProcResumeProcMessageReply["data"]>(messageRegistry, {
+    messageType: "resume_proc",
+    replySuccess: "resume_proc_ok",
+    replyError: "resume_proc_error",
+    writeOp: true,
+    listener: function(
+        data,
+        callback
+    ) {
+        resumeProc(db, activeProcs, data.procName, function(err, myProc) {
+            if (err) {
+                callback((err && err.message) || "uknown_error");
+            } else {
+                if (myProc) {
+                    callback(null, {proc: myProc});
+                } else {
+                    callback("invalid_proc");
+                }
+            }
+        });
+    }
+});
+
+registerMessage<IPipeProcReclaimProcMessage["data"], IPipeProcReclaimProcMessageReply["data"]>(messageRegistry, {
+    messageType: "reclaim_proc",
+    replySuccess: "reclaim_proc_ok",
+    replyError: "reclaim_proc_error",
+    writeOp: true,
+    listener: function(
+        data,
+        callback
+    ) {
+        reclaimProc(db, activeProcs, data.procName, function(err, lastClaimedRange) {
+            if (err) {
+                callback((err && err.message) || "uknown_error");
+            } else {
+                callback(null, {lastClaimedRange: lastClaimedRange || ""});
+            }
+        });
+    }
+});
+
+initializeMessages(writeBuffer, messageRegistry);
+startWriteBuffer(writeBuffer);
