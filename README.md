@@ -9,6 +9,7 @@
 - [Intro](#intro)
 - [Example](#example)
 - [Installing](#installing)
+- [Status](#status)
 - [Process management](#process-management)
   - [spawn](#spawn)
   - [connect](#connect)
@@ -83,6 +84,20 @@ All client options return a Promise but can also accept a standard nodejs `callb
 ```bash
 npm install --save pipeproc
 ```
+
+## Status
+
+> Linux  
+[![Build Status](https://dev.azure.com/zisismaras/pipeproc/_apis/build/status/zisismaras.pipeproc.linux)](https://dev.azure.com/zisismaras/pipeproc/_build/latest?definitionId=4)
+
+> OSX  
+[![Build Status](https://dev.azure.com/zisismaras/pipeproc/_apis/build/status/zisismaras.pipeproc.mac)](https://dev.azure.com/zisismaras/pipeproc/_build/latest?definitionId=5)
+
+> Windows  
+[![Build Status](https://dev.azure.com/zisismaras/pipeproc/_apis/build/status/zisismaras.pipeproc.windows)](https://dev.azure.com/zisismaras/pipeproc/_build/latest?definitionId=6)
+
+> npm  
+[![npm version](https://badge.fury.io/js/pipeproc.svg)](https://badge.fury.io/js/pipeproc)
 
 ## Process management
 
