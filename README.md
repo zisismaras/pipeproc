@@ -133,7 +133,7 @@ shutdown(
 
 This is how you add logs to a topic.  
 The topic will be created implicitly when its first log is committed.  
-Multiple logs can be commited in a batch, either in the same topic or to different topics, in that case
+Multiple logs can be committed in a batch, either in the same topic or to different topics, in that case
 the write will be an atomic operation and either all logs will be successfully written or all will fail.
 
 #### commit examples
@@ -151,7 +151,7 @@ pipeProcClient.commit({
 ```
 
 `commit()` will return the id(s) of the log(s) committed.  
-Ids follow a format of `{timestamp}-{sequenceNumber}` where timestamp is the time the log was committed in miliseconds
+Ids follow a format of `{timestamp}-{sequenceNumber}` where timestamp is the time the log was committed in milliseconds
 and the sequence number is an auto-incrementing integer (starting from 0) indicating the log's position in its topic.  
 The log's body can be an arbitrarily nested javascript object.
 
@@ -288,7 +288,7 @@ get the total logs in a topic
 
 ```javascript
 pipeProcClient.length("my_topic").then(function(length) {
-  console.log(legth);
+  console.log(length);
 });
 ```
 
@@ -384,7 +384,7 @@ ack(
 ): Promise<string>;
 ```
 
-Returns the logId of the log we just acked. If our proc fetched multiple logs (using count > 1) all of the logs will be aknowledged as processed and the call instead of an id will return a range (`1518951480106-0..1518951480106-1`).  
+Returns the logId of the log we just acked. If our proc fetched multiple logs (using count > 1) all of the logs will be acknowledged as processed and the call instead of an id will return a range (`1518951480106-0..1518951480106-1`).  
 The next time the proc is executed it will fetch the next log after the above logId(or range).
 
 ### ackCommit
@@ -561,7 +561,7 @@ interface ILiveProc {
 
 ## GC
 
-Logs are immutable and cannot be editted or deleted after creation, so a garbage collector is needed to make sure our topics don't grow too large.
+Logs are immutable and cannot be edited or deleted after creation, so a garbage collector is needed to make sure our topics don't grow too large.
 
 Every time it runs it performs the following:
 
