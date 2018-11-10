@@ -1,0 +1,8 @@
+pool:
+  vmImage: 'Ubuntu-16.04'
+
+steps:
+- script: npm install --save-dev
+  displayName: 'npm install'
+- script: npm run test
+  displayName: 'run tests'
