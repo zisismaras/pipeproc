@@ -2,6 +2,48 @@
 
 > Multi-process log processing for nodejs
 
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**
+
+- [Intro](#intro)
+- [Example](#example)
+- [Installing](#installing)
+- [Process management](#process-management)
+  - [spawn](#spawn)
+  - [connect](#connect)
+  - [shutdown](#shutdown)
+- [Committing logs](#committing-logs)
+    - [commit examples](#commit-examples)
+- [Read API](#read-api)
+  - [range](#range)
+    - [range signature](#range-signature)
+    - [range examples](#range-examples)
+  - [revrange](#revrange)
+  - [length](#length)
+- [Procs](#procs)
+  - [offsets](#offsets)
+  - [ack](#ack)
+  - [ackCommit](#ackcommit)
+  - [reclaim](#reclaim)
+    - [reclaim settings](#reclaim-settings)
+  - [destroying procs](#destroying-procs)
+  - [inspecting procs](#inspecting-procs)
+  - [resuming/disabling procs](#resumingdisabling-procs)
+- [SystemProcs](#systemprocs)
+  - [systemProc example](#systemproc-example)
+  - [Inline processors](#inline-processors)
+- [LiveProcs](#liveprocs)
+  - [liveProc signature](#liveproc-signature)
+  - [liveProc example](#liveproc-example)
+- [GC](#gc)
+- [Typings](#typings)
+- [Tests](#tests)
+- [Meta](#meta)
+- [Contributing](#contributing)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## Intro
 
 PipeProc is a data processing system that can be embedded in nodejs applications (eg. electron).  
@@ -35,6 +77,12 @@ pipeProcClient.spawn().then(function() {
 ```
 
 All client options return a Promise but can also accept a standard nodejs `callback(err, data)` instead.
+
+## Installing
+
+```bash
+npm install --save pipeproc
+```
 
 ## Process management
 
@@ -81,7 +129,7 @@ shutdown(
 ): Promise<string>;
 ```
 
-### Committing logs
+## Committing logs
 
 This is how you add logs to a topic.  
 The topic will be created implicitly when its first log is committed.  
@@ -414,6 +462,8 @@ pipeProcClient.disableProc("my_proc") // throws if it doesn't exist
 Manually executing and managing a proc can be tiresome.  
 SystemProcs will take care of all creation/execution/management of procs while also distributing the load to multiple workers, let's take a look using the above proc example with incrementing numbers but now using a `systemProc` and a processor module.
 
+### systemProc example
+
 ```javascript
 pipeProcClient.systemProc({
   name: "my_system_proc",
@@ -433,6 +483,13 @@ module.exports = function(log, done) {
 };
 ```
 
+Processors can publish to multiple topics by setting the `to` field to an array of topics.  
+If the `to` field is omitted, the processor will not publish any logs (eg. get a log, process it, write the result to a database)
+Instead of using a `done` callback, you can also return a promise.  
+If an error is returned in the done callback (or a rejected promise is returned) the proc will be reclaimed.
+
+### Inline processors
+
 Processors can also be inlined:
 
 ```javascript
@@ -449,11 +506,6 @@ pipeProcClient.systemProc({
     }
 });
 ```
-
-Processors can publish to multiple topics by setting the `to` field to an array of topics.  
-If the `to` field is omitted, the processor will not publish any logs (eg. get a log, process it, write the result to a database)
-Instead of using a `done` callback, you can also return a promise.  
-If an error is returned in the done callback (or a rejected promise is returned) the proc will be reclaimed.  
 
 ## LiveProcs
 
