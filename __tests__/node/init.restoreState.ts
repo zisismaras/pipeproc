@@ -2,6 +2,7 @@
 import "jest-extended";
 import rimraf from "rimraf";
 //tslint:enable
+import {tmpdir} from "os";
 import LevelDOWN from "leveldown";
 import MemDOWN from "memdown";
 import {commitLog} from "../../src/node/commitLog";
@@ -12,7 +13,7 @@ import {systemProc, ISystemProc} from "../../src/node/systemProc";
 import {IWorker} from "../../src/node/workerManager";
 
 describe("system init (disk)", function() {
-    const db: LevelDOWN.LevelDown = LevelDOWN("/tmp/pipeproc_test_init/");
+    const db: LevelDOWN.LevelDown = LevelDOWN(`${tmpdir}/pipeproc_test_init`);
     const activeTopics: IActiveTopics = {};
     const activeProcs: IProc[] = [];
     const systemState: ISystemState = {active: false};
@@ -63,7 +64,7 @@ describe("system init (disk)", function() {
             if (closeErr) {
                 return done.fail(closeErr);
             }
-            rimraf("/tmp/pipeproc_test_init/", function(destroyErr) {
+            rimraf(`${tmpdir}/pipeproc_test_init`, function(destroyErr) {
                 if (destroyErr) {
                     return done.fail(destroyErr);
                 }
