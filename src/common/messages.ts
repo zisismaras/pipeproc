@@ -187,7 +187,11 @@ export interface IPipeProcSystemInitMessage extends IPipeProcMessage {
         options: {
             memory?: boolean,
             location?: string,
-            workers?: number
+            workers?: number,
+            gc?: {
+                minPruneTime?: number,
+                interval?: number
+            } | false
         }
     };
 }

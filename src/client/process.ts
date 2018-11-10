@@ -8,7 +8,12 @@ const d = debug("pipeproc:client");
 
 export function spawn(
     client: IPipeProcClient,
-    options: {memory: boolean, location: string, workers: number},
+    options: {
+        memory: boolean,
+        location: string,
+        workers: number,
+        gc?: {minPruneTime?: number, interval?: number} | false
+    },
     callback: (err?: Error | null, status?: string) => void
 ): void {
     if (client.pipeProcNode) return callback(new Error("node_already_active"));

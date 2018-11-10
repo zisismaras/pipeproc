@@ -44,6 +44,7 @@ import {initializeMessages, registerMessage, IMessageRegistry} from "./messaging
 import {IWriteBuffer, startWriteBuffer} from "./writeBuffer";
 import {disableProc, resumeProc} from "./resumeDisableProc";
 import {reclaimProc} from "./reclaimProc";
+import {collect} from "./gc/collect";
 
 const d = debug("pipeproc:node");
 
@@ -122,6 +123,21 @@ registerMessage<IPipeProcSystemInitMessage["data"], IPipeProcMessage["data"]>(me
                     if (err) {
                         callback((spawnErr && spawnErr.message) || "uknown_error");
                     } else {
+                        if (data.options.gc !== false) {
+                            const MIN_PRUNE_TIME = (data.options.gc && data.options.gc.minPruneTime) || 30000;
+                            const GC_INTERVAL = (data.options.gc && data.options.gc.interval) || 30000;
+                            let gcRunning = false;
+                            setInterval(function() {
+                                if (gcRunning) return;
+                                d("gc will start running...");
+                                gcRunning = true;
+                                collect(db, activeTopics, activeProcs, {minPruneTime: MIN_PRUNE_TIME}, function(gcErr) {
+                                    d("gc error:", gcErr);
+                                    gcRunning = false;
+                                    d("gc ended");
+                                });
+                            }, GC_INTERVAL);
+                        }
                         callback();
                     }
                 });

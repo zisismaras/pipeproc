@@ -36,7 +36,12 @@ export interface IPipeProcClient {
         callback?: (err?: null | Error, logId?: string | string[]) => void
     ): Promise<string | string[]>;
     spawn(
-        options?: {memory?: boolean, location?: string, workers?: number},
+        options?: {
+            memory?: boolean,
+            location?: string,
+            workers?: number,
+            gc?: {minPruneTime?: number, interval?: number} | false
+        },
         callback?: (err?: null | Error, status?: string) => void
     ): Promise<string>;
     connect(
@@ -141,7 +146,8 @@ export const pipeProcClient: IPipeProcClient = {
         var opts: {
             memory?: boolean,
             location?: string,
-            workers?: number
+            workers?: number,
+            gc?: {minPruneTime?: number, interval?: number} | false
         };
         if (typeof options === "function") { //only callback passed
             cb = options;
@@ -155,7 +161,8 @@ export const pipeProcClient: IPipeProcClient = {
             spawn(pipeProcClient, {
                 memory: opts.memory || false,
                 location: opts.location || "./pipeproc_data",
-                workers: (opts.workers && opts.workers >= 1 && opts.workers) || 0
+                workers: (opts.workers && opts.workers >= 1 && opts.workers) || 0,
+                gc: opts.gc
             }, function(err, status) {
                 if (err) {
                     reject(err);

@@ -43,6 +43,7 @@ export function transaction<T>(db: LevelDOWN.LevelDown): ITransaction<T> {
             }
         },
         commitUpdate: function(callback) {
+            if (this._updates.length === 0) return callback();
             d("commiting update...");
             const updates: LevelDOWN.Batch[] = this._updates.map(u => {
                 //tslint:disable no-object-literal-type-assertion prefer-type-cast
@@ -98,6 +99,7 @@ export function transaction<T>(db: LevelDOWN.LevelDown): ITransaction<T> {
             }
         },
         commitDelete: function(callback) {
+            if (this._updates.length === 0) return callback();
             d("commiting delete...");
             const updates: LevelDOWN.DelBatch[] = this._updates.map(u => {
                 //tslint:disable no-object-literal-type-assertion prefer-type-cast
