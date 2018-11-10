@@ -18,7 +18,7 @@ describe("topics without procs", function() {
         db = MemDOWN();
         activeTopics = {};
         activeProcs = [];
-        addLogsToTopic(db, activeTopics, 20, function(err) {
+        addLogsToTopic(db, activeTopics, 200, function(err) {
             if (err) {
                 done.fail(err);
             } else {
@@ -27,7 +27,7 @@ describe("topics without procs", function() {
         });
     });
     it("should collect all logs that have passed the MIN_PRUNE_TIME", function(done) {
-        collect(db, activeTopics, activeProcs, {minPruneTime: 10}, function(gcErr) {
+        collect(db, activeTopics, activeProcs, {minPruneTime: 100}, function(gcErr) {
             if (gcErr) return done.fail(gcErr);
             getAllLogs(db, activeTopics, function(rangeErr, logs) {
                 if (rangeErr) return done.fail(rangeErr);
@@ -47,9 +47,9 @@ describe("topics without procs", function() {
         });
     });
     it("should collect all logs that have passed the MIN_PRUNE_TIME and not those that haven't", function(done) {
-        addLogsToTopic(db, activeTopics, 20, function(commitErr) {
+        addLogsToTopic(db, activeTopics, 200, function(commitErr) {
             if (commitErr) return done.fail(commitErr);
-            collect(db, activeTopics, activeProcs, {minPruneTime: 30}, function(gcErr) {
+            collect(db, activeTopics, activeProcs, {minPruneTime: 300}, function(gcErr) {
                 if (gcErr) return done.fail(gcErr);
                 getAllLogs(db, activeTopics, function(rangeErr, logs) {
                     if (rangeErr) return done.fail(rangeErr);
@@ -69,11 +69,11 @@ describe("topics with procs", function() {
         db = MemDOWN();
         activeTopics = {};
         activeProcs = [];
-        addLogsToTopic(db, activeTopics, 20, function(err) {
+        addLogsToTopic(db, activeTopics, 200, function(err) {
             if (err) {
                 done.fail(err);
             } else {
-                addLogsToTopic(db, activeTopics, 20, function(err2) {
+                addLogsToTopic(db, activeTopics, 200, function(err2) {
                     if (err2) {
                         done.fail(err2);
                     } else {
@@ -120,7 +120,7 @@ describe("topics with procs", function() {
                             if (procErr3) return done.fail(procErr3);
                             ack(db, activeProcs, "my_proc_0", function(ackErr3) {
                                 if (ackErr3) return done.fail(ackErr3);
-                                collect(db, activeTopics, activeProcs, {minPruneTime: 30}, function(gcErr) {
+                                collect(db, activeTopics, activeProcs, {minPruneTime: 300}, function(gcErr) {
                                     if (gcErr) return done.fail(gcErr);
                                     getAllLogs(db, activeTopics, function(rangeErr, logs) {
                                         if (rangeErr) return done.fail(rangeErr);
@@ -172,7 +172,7 @@ describe("topics with procs", function() {
                             if (procErr3) return done.fail(procErr3);
                             ack(db, activeProcs, "my_proc_0", function(ackErr3) {
                                 if (ackErr3) return done.fail(ackErr3);
-                                collect(db, activeTopics, activeProcs, {minPruneTime: 60}, function(gcErr) {
+                                collect(db, activeTopics, activeProcs, {minPruneTime: 600}, function(gcErr) {
                                     if (gcErr) return done.fail(gcErr);
                                     getAllLogs(db, activeTopics, function(rangeErr, logs) {
                                         if (rangeErr) return done.fail(rangeErr);
@@ -225,7 +225,7 @@ describe("topics with procs", function() {
                             if (procErr3) return done.fail(procErr3);
                             ack(db, activeProcs, "my_proc_0", function(ackErr3) {
                                 if (ackErr3) return done.fail(ackErr3);
-                                collect(db, activeTopics, activeProcs, {minPruneTime: 10}, function(gcErr) {
+                                collect(db, activeTopics, activeProcs, {minPruneTime: 100}, function(gcErr) {
                                     if (gcErr) return done.fail(gcErr);
                                     getAllLogs(db, activeTopics, function(rangeErr, logs) {
                                         if (rangeErr) return done.fail(rangeErr);
@@ -253,7 +253,7 @@ describe("topics with procs", function() {
             if (procErr) return done.fail(procErr);
             ack(db, activeProcs, "my_proc_0", function(ackErr) {
                 if (ackErr) return done.fail(ackErr);
-                collect(db, activeTopics, activeProcs, {minPruneTime: 10}, function(gcErr) {
+                collect(db, activeTopics, activeProcs, {minPruneTime: 100}, function(gcErr) {
                     if (gcErr) return done.fail(gcErr);
                     getAllLogs(db, activeTopics, function(rangeErr, logs) {
                         if (rangeErr) return done.fail(rangeErr);
@@ -289,7 +289,7 @@ describe("topics with procs", function() {
                     if (procErr2) return done.fail(procErr2);
                     ack(db, activeProcs, "my_proc_0", function(ackErr2) {
                         if (ackErr2) return done.fail(ackErr2);
-                        collect(db, activeTopics, activeProcs, {minPruneTime: 10}, function(gcErr) {
+                        collect(db, activeTopics, activeProcs, {minPruneTime: 100}, function(gcErr) {
                             if (gcErr) return done.fail(gcErr);
                             getAllLogs(db, activeTopics, function(rangeErr, logs) {
                                 if (rangeErr) return done.fail(rangeErr);
