@@ -7,8 +7,8 @@
         // "allowJs": true,                       /* Allow javascript files to be compiled. */
         // "checkJs": true,                       /* Report errors in .js files. */
         // "jsx": "preserve",                     /* Specify JSX code generation: 'preserve', 'react-native', or 'react'. */
-        "declaration": false, /* Generates corresponding '.d.ts' file. */
-        "sourceMap": true, /* Generates corresponding '.map' file. */
+        "declaration": true, /* Generates corresponding '.d.ts' file. */
+        "sourceMap": false, /* Generates corresponding '.map' file. */
         // "outFile": "./",                       /* Concatenate and emit output to single file. */
         "outDir": "./lib", /* Redirect output structure to the directory. */
         "rootDir": "./src", /* Specify the root directory of input files. Use to control the output directory structure with --outDir. */
@@ -41,8 +41,8 @@
         "esModuleInterop": true, /* Enables emit interoperability between CommonJS and ES Modules via creation of namespace objects for all imports. Implies 'allowSyntheticDefaultImports'. */
         // "preserveSymlinks": true,              /* Do not resolve the real path of symlinks. */
         /* Source Map Options */
-        "sourceRoot": "./src", /* Specify the location where debugger should locate TypeScript files instead of source locations. */
-        "mapRoot": "./lib", /* Specify the location where debugger should locate map files instead of generated locations. */
+        //"sourceRoot": "./src", /* Specify the location where debugger should locate TypeScript files instead of source locations. */
+        //"mapRoot": "./lib", /* Specify the location where debugger should locate map files instead of generated locations. */
         // "inlineSourceMap": true,               /* Emit a single file with source maps instead of having a separate file. */
         // "inlineSources": true,                 /* Emit the source alongside the sourcemaps within a single file; requires '--inlineSourceMap' or '--sourceMap' to be set. */
         /* Experimental Options */
