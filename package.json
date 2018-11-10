@@ -1,6 +1,6 @@
 {
   "name": "pipeproc",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "BSD-3-Clause",
   "author": {
     "name": "Zisis Maras",
@@ -10,6 +10,9 @@
   "repository": "https://github.com/zisismaras/pipeproc",
   "homepage": "https://github.com/zisismaras/pipeproc",
   "main": "lib/client/index.js",
+  "keywords": [
+    "log", "structured commit log", "kafka", "redis stream", "multi process"
+  ],
   "scripts": {
     "test": "jest"
   },
