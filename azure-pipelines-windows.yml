@@ -1,0 +1,8 @@
+pool:
+  vmImage: 'vs2017-win2016'
+
+steps:
+- script: npm install --save-dev
+  displayName: 'npm install'
+- script: npm run test
+  displayName: 'run tests'
