@@ -95,6 +95,7 @@ export function shutdown(
         client.messageMap[msg.msgKey] = function(e: IPipeProcMessage) {
             if (e.type === "system_closed") {
                 d("node closed");
+                delete client.pipeProcNode;
                 callback(null, "closed");
             } else if (e.type === "system_closed_error") {
                 callback(new Error(e.errStatus || "uknown_error"));
