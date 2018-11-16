@@ -15,7 +15,7 @@
   - [connect](#connect)
   - [shutdown](#shutdown)
 - [Committing logs](#committing-logs)
-    - [commit examples](#commit-examples)
+  - [commit examples](#commit-examples)
 - [Read API](#read-api)
   - [range](#range)
     - [range signature](#range-signature)
@@ -88,14 +88,11 @@ npm install --save pipeproc
 ## Status
 
 > Linux  
-[![Build Status](https://dev.azure.com/zisismaras/pipeproc/_apis/build/status/zisismaras.pipeproc.linux)](https://dev.azure.com/zisismaras/pipeproc/_build/latest?definitionId=4)
-
+[![Build Status](https://dev.azure.com/zisismaras/pipeproc/_apis/build/status/zisismaras.pipeproc.linux)](https://dev.azure.com/zisismaras/pipeproc/_build/latest?definitionId=4)  
 > OSX  
-[![Build Status](https://dev.azure.com/zisismaras/pipeproc/_apis/build/status/zisismaras.pipeproc.mac)](https://dev.azure.com/zisismaras/pipeproc/_build/latest?definitionId=5)
-
+[![Build Status](https://dev.azure.com/zisismaras/pipeproc/_apis/build/status/zisismaras.pipeproc.mac)](https://dev.azure.com/zisismaras/pipeproc/_build/latest?definitionId=5)  
 > Windows  
-[![Build Status](https://dev.azure.com/zisismaras/pipeproc/_apis/build/status/zisismaras.pipeproc.windows)](https://dev.azure.com/zisismaras/pipeproc/_build/latest?definitionId=6)
-
+[![Build Status](https://dev.azure.com/zisismaras/pipeproc/_apis/build/status/zisismaras.pipeproc.windows)](https://dev.azure.com/zisismaras/pipeproc/_build/latest?definitionId=6)  
 > npm  
 [![npm version](https://badge.fury.io/js/pipeproc.svg)](https://badge.fury.io/js/pipeproc)
 
@@ -151,7 +148,7 @@ The topic will be created implicitly when its first log is committed.
 Multiple logs can be committed in a batch, either in the same topic or to different topics, in that case
 the write will be an atomic operation and either all logs will be successfully written or all will fail.
 
-#### commit examples
+### commit examples
 
 Add a single log to a topic:
 
@@ -347,12 +344,12 @@ try {
 Procs are the way to consistently fetch logs from a topic, process them and commit the results in a safe and serial manner.  
 So, what's going on in the above example?  
 
-* first we add a log to our "numbers" topic
-* then we create a proc named "my_proc" with an offset of ">" (it means start fetching from the very beginning of the topic, see more below) for the "numbers" topic
-* the proc returns a log (the log we added on the first commit)
-* we do some processing (incrementing the number)
-* we then acknowledge the operation and commit our result to a different topic
-* we are also catching errors in our processing and the ack, in that case the proc must be reclaimed.
+- first we add a log to our "numbers" topic
+- then we create a proc named "my_proc" with an offset of ">" (it means start fetching from the very beginning of the topic, see more below) for the "numbers" topic
+- the proc returns a log (the log we added on the first commit)
+- we do some processing (incrementing the number)
+- we then acknowledge the operation and commit our result to a different topic
+- we are also catching errors in our processing and the ack, in that case the proc must be reclaimed.
 
 If everything goes well, the next time we call the proc it will fetch us our second log `1518951480106-1`.  
 If something goes wrong and `reclaim()` is called the proc will be "reset" and will fetch the first log again.  
@@ -384,9 +381,9 @@ proc(
 
 offsets are how you position the proc to a specific point in the topic.  
 
-* `>` fetch the next log after the latest acked log for this proc. If no logs have been acked yet, it will start from the beginning of the topic.
-* `$>` like `>` but it will start from new logs and not from the beginning (logs created after the proc’s creation)
-* `{{specific_log/timestamp}}` - follows the `range()` syntax. It can be a full log name, a partial timestamp or a sequence id(`:{{id}}`). The next non-acked log AFTER the match will be returned.
+- `>` fetch the next log after the latest acked log for this proc. If no logs have been acked yet, it will start from the beginning of the topic.
+- `$>` like `>` but it will start from new logs and not from the beginning (logs created after the proc’s creation)
+- `{{specific_log/timestamp}}` - follows the `range()` syntax. It can be a full log name, a partial timestamp or a sequence id(`:{{id}}`). The next non-acked log AFTER the match will be returned.
 
 ### ack
 
@@ -409,23 +406,15 @@ The next time the proc is executed it will fetch the next log after the above lo
 ### reclaim
 
 If something goes wrong while we are processing our log(s) or a PipeProc error is raised when we ack/commit our result, we should call `reclaim`.  
-This will reset the proc, al
-pipeproc.destroyProc("my_proc") // throws if it doesn't exist
-.then(function(status) {
-  //status = "ok"
-  console.log(status);
-});
-.catch(function(err) {
-  console.error(err);
-});lowing to retry the operation.
+This will reset the proc, allowing to retry the operation.
 
 #### reclaim settings
 
 In the proc's signature there are some settings for the reclaims, allowing us to control how reclaims work and not retrying failed operations forever or getting stuck.
 
-* maxReclaims - how many times we can call reclaim on a proc before the `onMaxReclaimsReached` strategy is triggered (defaults to 10, set to -1 for no limit)
-* reclaimTimeout - In order not to get stuck by a bad processing (failing to call `ack()` or `reclaim()`), the proc will be automatically be reclaimed after a certain amount of time by the system, this value sets the time.
-* onMaxReclaimsReached - what to do when the maxReclaims are reached. By default it will "disable" the proc which will raise an error if we try to use the proc. Can be set to "continue" so we can keep reclaiming forever.
+- maxReclaims - how many times we can call reclaim on a proc before the `onMaxReclaimsReached` strategy is triggered (defaults to 10, set to -1 for no limit)
+- reclaimTimeout - In order not to get stuck by a bad processing (failing to call `ack()` or `reclaim()`), the proc will be automatically be reclaimed after a certain amount of time by the system, this value sets the time.
+- onMaxReclaimsReached - what to do when the maxReclaims are reached. By default it will "disable" the proc which will raise an error if we try to use the proc. Can be set to "continue" so we can keep reclaiming forever.
 
 ### destroying procs
 
@@ -580,8 +569,8 @@ Logs are immutable and cannot be edited or deleted after creation, so a garbage 
 
 Every time it runs it performs the following:
 
-* for topics that have no procs attached it will collect all logs that have passed the `minPruneTime`
-* for topics that have procs attached, it will collect all logs 2 positions behind the last claimed log range, but only if they have also passed the `minPruneTime`
+- for topics that have no procs attached it will collect all logs that have passed the `minPruneTime`
+- for topics that have procs attached, it will collect all logs 2 positions behind the last claimed log range, but only if they have also passed the `minPruneTime`
 
 You can configure the `minPruneTime` and gc `interval` when you `spawn` the PipeProc node.  
 By default they are both set to 30000ms.
