@@ -25,9 +25,9 @@ describe("spawning the node", function() {
     });
 
     it("should return an error if spawned twice", function(done) {
-        pipeProcClient.spawn({memory: true}).then(function(status) {
+        (<Promise<string>>pipeProcClient.spawn({memory: true})).then(function(status) {
             expect(status).toEqual("spawned_and_connected");
-            pipeProcClient.spawn({memory: true}).then(function() {
+            (<Promise<string>>pipeProcClient.spawn({memory: true})).then(function() {
                 done.fail(new Error("spawing twice should have raised an error"));
             }).catch(function(err) {
                 expect(err).toBeInstanceOf(Error);
@@ -43,7 +43,7 @@ describe("spawning the node", function() {
 describe("connecting to an existing node", function() {
 
     beforeEach(function(done) {
-        pipeProcClient.spawn({memory: true}).then(function() {
+        (<Promise<string>>pipeProcClient.spawn({memory: true})).then(function() {
             done();
         }).catch(function(err) {
             done.fail(err);
@@ -85,7 +85,7 @@ describe("shutting down a node", function() {
 
     it("should be able to shutdown a node", function(done) {
         //spawn it first
-        pipeProcClient.spawn({memory: true}).then(function() {
+        (<Promise<string>>pipeProcClient.spawn({memory: true})).then(function() {
             pipeProcClient.shutdown(function(err, status) {
                 expect(err).toBeNull();
                 expect(status).toEqual("closed");
