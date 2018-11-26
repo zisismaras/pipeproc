@@ -40,7 +40,7 @@ export interface IPipeProcClient {
             memory?: boolean,
             location?: string,
             workers?: number,
-            gc?: {minPruneTime?: number, interval?: number} | false
+            gc?: {minPruneTime?: number, interval?: number} | boolean
         },
         callback?: (err?: null | Error, status?: string) => void
     ): Promise<string> | void;
@@ -147,7 +147,7 @@ export const pipeProcClient: IPipeProcClient = {
             memory?: boolean,
             location?: string,
             workers?: number,
-            gc?: {minPruneTime?: number, interval?: number} | false
+            gc?: {minPruneTime?: number, interval?: number} | boolean
         };
         if (typeof options === "function") { //only callback passed
             cb = options;

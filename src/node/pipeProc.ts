@@ -123,9 +123,11 @@ registerMessage<IPipeProcSystemInitMessage["data"], IPipeProcMessage["data"]>(me
                     if (err) {
                         callback((spawnErr && spawnErr.message) || "uknown_error");
                     } else {
-                        if (data.options.gc !== false) {
-                            const MIN_PRUNE_TIME = (data.options.gc && data.options.gc.minPruneTime) || 30000;
-                            const GC_INTERVAL = (data.options.gc && data.options.gc.interval) || 30000;
+                        if (data.options.gc) {
+                            const MIN_PRUNE_TIME = (data.options.gc &&
+                                (<{minPruneTime: number}>data.options.gc).minPruneTime) || 30000;
+                            const GC_INTERVAL = (data.options.gc &&
+                                (<{interval: number}>data.options.gc).interval) || 30000;
                             let gcRunning = false;
                             setInterval(function() {
                                 if (gcRunning) return;

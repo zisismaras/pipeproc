@@ -61,7 +61,7 @@ It does this by using processors which are custom-written modules/functions that
 ## Example
 
 ```javascript
-const {pipeProcClient} = require("./lib/client");
+const {pipeProcClient} = require("pipeproc");
 
 pipeProcClient.spawn().then(function() {
     //commit a log to topic "my_topic_1"
@@ -112,7 +112,7 @@ spawn(
         //the number of workers(processes) to use (check the systemProc section below), set to 0 for no workers
         workers?: number,
         //tune the garbage collector settings (check the gc section below)
-        gc?: {minPruneTime?: number, interval?: number} | false
+        gc?: {minPruneTime?: number, interval?: number} | boolean
     },
     callback?: (err?: null | Error, status?: string) => void
 ): Promise<string>;
@@ -573,7 +573,15 @@ Every time it runs it performs the following:
 - for topics that have procs attached, it will collect all logs 2 positions behind the last claimed log range, but only if they have also passed the `minPruneTime`
 
 You can configure the `minPruneTime` and gc `interval` when you `spawn` the PipeProc node.  
-By default they are both set to 30000ms.
+By default they are both set to 30000ms.  
+
+**By default the gc is disabled.** It can be enabled by passing `true` on the `spawn`'s gc options or an `object` with prune time and interval settings.
+
+### Caveats/problems
+
+- topic, proc and systemProc metadata are left behind even if the topic is empty and/or no longer used
+- the `length()` function will return an incorrect number if a part of the topic is collected
+- there seems to be a problem with the gc timers on OSX, causing the tests to sometimes fail
 
 ## Typings
 

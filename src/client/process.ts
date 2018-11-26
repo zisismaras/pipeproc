@@ -12,7 +12,7 @@ export function spawn(
         memory: boolean,
         location: string,
         workers: number,
-        gc?: {minPruneTime?: number, interval?: number} | false
+        gc?: {minPruneTime?: number, interval?: number} | boolean
     },
     callback: (err?: Error | null, status?: string) => void
 ): void {
