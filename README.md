@@ -38,6 +38,7 @@
   - [liveProc signature](#liveproc-signature)
   - [liveProc example](#liveproc-example)
 - [GC](#gc)
+  - [Caveats/problems](#caveatsproblems)
 - [Typings](#typings)
 - [Tests](#tests)
 - [Meta](#meta)
