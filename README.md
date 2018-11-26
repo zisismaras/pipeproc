@@ -62,7 +62,8 @@ It does this by using processors which are custom-written modules/functions that
 ## Example
 
 ```javascript
-const {pipeProcClient} = require("pipeproc");
+const {PipeProc} = require("pipeproc");
+const pipeProcClient = PipeProc();
 
 pipeProcClient.spawn().then(function() {
     //commit a log to topic "my_topic_1"
@@ -101,16 +102,20 @@ npm install --save pipeproc
 
 ### spawn
 
-Spawn the node and connect to it.
+Spawn the node and connect to it.  
+If there is a need to spawn multiple nodes on the same host you can use the `namespace` option with a custom name.  
+If a custom `namespace` is used, all clients that will `connect()` to it will need to provide it.
 
 ```typescript
 spawn(
     options?: {
+        //use a different ipc namespace
+        namespace?: string,
         //use an in-memory store instead of the disk adapter
         memory?: boolean,
         //set the location of the underlying store (if memory is false)
         location?: string,
-        //the number of workers(processes) to use (check the systemProc section below), set to 0 for no workers
+        //the number of workers(processes) to use (check the systemProc section below), set to 0 for no workers, defaults to the cpu thread count
         workers?: number,
         //tune the garbage collector settings (check the gc section below)
         gc?: {minPruneTime?: number, interval?: number} | boolean
@@ -122,12 +127,15 @@ spawn(
 ### connect
 
 Connect to an already spawned node.  
-The node must be already spawned or an error will be raised.  
 
 Usecase: Connect to the same PipeProc instance from a different process (eg. electron renderer)
 
 ```typescript
 connect(
+    options?: {
+        //use a different ipc namespace
+        namespace?: string
+    },
     callback?: (err?: null | Error, status?: string) => void
 ): Promise<string>;
 ```

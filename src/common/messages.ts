@@ -198,6 +198,20 @@ export interface IPipeProcSystemInitMessage extends IPipeProcMessage {
 
 export interface IPipeProcWorkerInitMessage extends IPipeProcMessage {
     type: "worker_init";
+    data: {
+        namespace: string;
+    };
+}
+
+export interface IPipeProcInitIPCMessage extends IPipeProcMessage {
+    type: "init_ipc";
+    data: {
+        namespace: string
+    };
+}
+
+export interface IPipeProcIPCEstablishedMessage extends IPipeProcMessage {
+    type: "ipc_established";
 }
 
 export interface IPipeProcWorkerInitMessageReply extends IPipeProcMessage {
@@ -412,10 +426,13 @@ export function prepareReclaimProcMessage(
     };
 }
 
-export function prepareWorkerInitMessage(): IPipeProcWorkerInitMessage {
+export function prepareWorkerInitMessage(namespace: string): IPipeProcWorkerInitMessage {
     return {
         type: "worker_init",
-        msgKey: uuid()
+        msgKey: uuid(),
+        data: {
+            namespace: namespace
+        }
     };
 }
 

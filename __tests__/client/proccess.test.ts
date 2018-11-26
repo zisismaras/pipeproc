@@ -1,13 +1,19 @@
 //tslint:disable
 import "jest-extended";
 //tslint:enable
-import {pipeProcClient} from "../../lib/client";
+import {PipeProc, IPipeProcClient} from "../../lib/client";
+import {v4 as uuid} from "uuid";
 
 describe("spawning the node", function() {
+    let client: IPipeProcClient;
+
+    beforeEach(function() {
+        client = PipeProc();
+    });
 
     afterEach(function(done) {
-        if (pipeProcClient.pipeProcNode) {
-            pipeProcClient.shutdown(function(err) {
+        if (client.pipeProcNode) {
+            client.shutdown(function(err) {
                 if (err) return done.fail(err);
                 done();
             });
@@ -17,22 +23,21 @@ describe("spawning the node", function() {
     });
 
     it("should spawn correctly", function(done) {
-        pipeProcClient.spawn({memory: true}, function(err, status) {
+        client.spawn({memory: true, workers: 0, namespace: uuid()}, function(err, status) {
             expect(err).toBeNull();
             expect(status).toEqual("spawned_and_connected");
             done();
         });
     });
 
-    it("should return an error if spawned twice", function(done) {
-        (<Promise<string>>pipeProcClient.spawn({memory: true})).then(function(status) {
+    it("should return a warning if spawned twice", function(done) {
+        (<Promise<string>>client.spawn({memory: true, workers: 0, namespace: uuid()})).then(function(status) {
             expect(status).toEqual("spawned_and_connected");
-            (<Promise<string>>pipeProcClient.spawn({memory: true})).then(function() {
-                done.fail(new Error("spawing twice should have raised an error"));
-            }).catch(function(err) {
-                expect(err).toBeInstanceOf(Error);
-                expect(err.message).toEqual("node_already_active");
+            (<Promise<string>>client.spawn({memory: true})).then(function(status2) {
+                expect(status2).toEqual("node_already_active");
                 done();
+            }).catch(function(err) {
+                done.fail(err);
             });
         }).catch(function(err) {
             done.fail(err);
@@ -41,9 +46,13 @@ describe("spawning the node", function() {
 });
 
 describe("connecting to an existing node", function() {
+    let client: IPipeProcClient;
+    let namespace: string;
 
     beforeEach(function(done) {
-        (<Promise<string>>pipeProcClient.spawn({memory: true})).then(function() {
+        client = PipeProc();
+        namespace = uuid();
+        (<Promise<string>>client.spawn({memory: true, workers: 0, namespace: namespace})).then(function() {
             done();
         }).catch(function(err) {
             done.fail(err);
@@ -51,8 +60,8 @@ describe("connecting to an existing node", function() {
     });
 
     afterEach(function(done) {
-        if (pipeProcClient.pipeProcNode) {
-            pipeProcClient.shutdown(function(err) {
+        if (client.pipeProcNode) {
+            client.shutdown(function(err) {
                 if (err) return done.fail(err);
                 done();
             });
@@ -63,9 +72,9 @@ describe("connecting to an existing node", function() {
 
     it("should be able to connect to an existing node", function(done) {
         //simulate a not yet connected client
-        pipeProcClient.ipc.disconnect("pipeproc");
-        delete pipeProcClient.ipc;
-        pipeProcClient.connect({}, function(err, status) {
+        client.ipc.disconnect(client.namespace);
+        delete client.ipc;
+        client.connect({namespace: namespace}, function(err, status) {
             expect(err).toBeNull();
             expect(status).toEqual("connected");
             done();
@@ -73,7 +82,7 @@ describe("connecting to an existing node", function() {
     });
 
     it("should return a notice if we are already connected", function(done) {
-        pipeProcClient.connect({}, function(err, status) {
+        client.connect({namespace: namespace}, function(err, status) {
             expect(err).toBeNull();
             expect(status).toEqual("already_connected");
             done();
@@ -82,11 +91,16 @@ describe("connecting to an existing node", function() {
 });
 
 describe("shutting down a node", function() {
+    let client: IPipeProcClient;
+
+    beforeEach(function() {
+        client = PipeProc();
+    });
 
     it("should be able to shutdown a node", function(done) {
         //spawn it first
-        (<Promise<string>>pipeProcClient.spawn({memory: true})).then(function() {
-            pipeProcClient.shutdown(function(err, status) {
+        (<Promise<string>>client.spawn({memory: true, workers: 0, namespace: uuid()})).then(function() {
+            client.shutdown(function(err, status) {
                 expect(err).toBeNull();
                 expect(status).toEqual("closed");
                 done();
@@ -97,7 +111,7 @@ describe("shutting down a node", function() {
     });
 
     it("should raise an error if there is no active node", function(done) {
-        pipeProcClient.shutdown(function(err, status) {
+        client.shutdown(function(err, status) {
             expect(err).toBeInstanceOf(Error);
             expect(err.message).toEqual("no_active_node");
             expect(status).toBeUndefined();

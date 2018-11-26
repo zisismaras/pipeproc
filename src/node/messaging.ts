@@ -6,6 +6,7 @@ import {IWriteBuffer} from "./writeBuffer";
 import {IWorker} from "./workerManager";
 import {IPC} from "node-ipc";
 import debug from "debug";
+import {tmpdir} from "os";
 
 export interface IMessageRegistry {
     [key: string]: {
@@ -51,10 +52,13 @@ export function registerMessage<T, U>(registry: IMessageRegistry, newMessage: me
 
 export function initializeMessages(
     writeBuffer: IWriteBuffer,
-    registry: IMessageRegistry
+    registry: IMessageRegistry,
+    namespace: string
 ) {
     const ipc = new IPC();
-    ipc.config.id = "pipeproc";
+    ipc.config.socketRoot = `${tmpdir()}/`;
+    ipc.config.appspace = "pipeproc.";
+    ipc.config.id = namespace;
     ipc.config.retry = 100;
     ipc.config.silent = false;
     ipc.config.logger = debug("pipeproc:ipc:node");

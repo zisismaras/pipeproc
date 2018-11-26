@@ -1,12 +1,16 @@
 //tslint:disable
 import "jest-extended";
 //tslint:enable
-import {pipeProcClient} from "../../lib/client";
+import {PipeProc, IPipeProcClient} from "../../lib/client";
+import {v4 as uuid} from "uuid";
 
 describe("committing logs", function() {
+    let client: IPipeProcClient;
 
     beforeEach(function(done) {
-        (<Promise<string>>pipeProcClient.spawn({memory: true})).then(function() {
+        client = PipeProc();
+
+        (<Promise<string>>client.spawn({memory: true, workers: 0, namespace: uuid()})).then(function() {
             done();
         }).catch(function(err) {
             done.fail(err);
@@ -14,8 +18,8 @@ describe("committing logs", function() {
     });
 
     afterEach(function(done) {
-        if (pipeProcClient.pipeProcNode) {
-            pipeProcClient.shutdown(function(err) {
+        if (client.pipeProcNode) {
+            client.shutdown(function(err) {
                 if (err) return done.fail(err);
                 done();
             });
@@ -25,7 +29,7 @@ describe("committing logs", function() {
     });
 
     it("should commit a simple log and return a logId with sequenceNumber 0 and a correct timestamp", function(done) {
-        (<Promise<string>>pipeProcClient.commit({
+        (<Promise<string>>client.commit({
             topic: "my_topic",
             body: {
                 hello: 1
@@ -41,7 +45,7 @@ describe("committing logs", function() {
     });
 
     it("should have the sequence number increasing incrementally when multiple logs are committed", function(done) {
-        (<Promise<string[]>>pipeProcClient.commit([{
+        (<Promise<string[]>>client.commit([{
             topic: "my_topic",
             body: {
                 hello: 1
@@ -62,7 +66,7 @@ describe("committing logs", function() {
     });
 
     it("should have the same and correct timestamps when multiple logs are committed", function(done) {
-        (<Promise<string[]>>pipeProcClient.commit([{
+        (<Promise<string[]>>client.commit([{
             topic: "my_topic",
             body: {
                 hello: 1
@@ -86,7 +90,7 @@ describe("committing logs", function() {
     });
 
     it("should have sequenceNumbers begin at zero if the 2 logs are committed to different topics", function(done) {
-        (<Promise<string[]>>pipeProcClient.commit([{
+        (<Promise<string[]>>client.commit([{
             topic: "my_topic",
             body: {
                 hello: 1
@@ -107,7 +111,7 @@ describe("committing logs", function() {
     });
 
     it("should return an error if the topic name is invalid", function(done) {
-        (<Promise<string>>pipeProcClient.commit({
+        (<Promise<string>>client.commit({
             topic: "an invalid topic",
             body: {
                 hello: 1
@@ -123,7 +127,7 @@ describe("committing logs", function() {
 
     it("should return an error if the log body is not an object", function(done) {
         //@ts-ignore
-        (<Promise<string>>pipeProcClient.commit({
+        (<Promise<string>>client.commit({
             topic: "my_topic",
             body: 123
         })).then(function(logId) {
@@ -137,7 +141,7 @@ describe("committing logs", function() {
 
     it("should return an error if the log body is missing", function(done) {
         //@ts-ignore
-        (<Promise<string>>pipeProcClient.commit({
+        (<Promise<string>>client.commit({
             topic: "my_topic"
         })).then(function(logId) {
             done.fail("it should not accept invalid log bodies");
@@ -150,7 +154,7 @@ describe("committing logs", function() {
 
     it("should return an error if the log body is null", function(done) {
         //@ts-ignore
-        (<Promise<string>>pipeProcClient.commit({
+        (<Promise<string>>client.commit({
             topic: "my_topic",
             body: null
         })).then(function(logId) {

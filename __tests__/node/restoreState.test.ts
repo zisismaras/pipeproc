@@ -93,6 +93,7 @@ describe("system init (disk)", function() {
 });
 
 describe("system init (in-memory)", function() {
+    //@ts-ignore
     const db: LevelDOWN.LevelDown = MemDOWN();
     const activeTopics: IActiveTopics = {};
     const activeProcs: IProc[] = [];

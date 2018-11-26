@@ -1,14 +1,18 @@
 //tslint:disable
 import "jest-extended";
 //tslint:enable
-import {pipeProcClient} from "../../lib/client";
+import {PipeProc, IPipeProcClient} from "../../lib/client";
+import {v4 as uuid} from "uuid";
 
 describe("using range", function() {
     let testLogIds: string[];
+    let client: IPipeProcClient;
 
     beforeEach(function(done) {
-        (<Promise<string>>pipeProcClient.spawn({memory: true})).then(function() {
-            commitSomeLogs().then(function(logs) {
+        client = PipeProc();
+
+        (<Promise<string>>client.spawn({memory: true, workers: 0, namespace: uuid()})).then(function() {
+            commitSomeLogs(client).then(function(logs) {
                 testLogIds = logs;
                 done();
             }).catch(function(err) {
@@ -20,8 +24,8 @@ describe("using range", function() {
     });
 
     afterEach(function(done) {
-        if (pipeProcClient.pipeProcNode) {
-            pipeProcClient.shutdown(function(err) {
+        if (client.pipeProcNode) {
+            client.shutdown(function(err) {
                 if (err) return done.fail(err);
                 done();
             });
@@ -31,7 +35,7 @@ describe("using range", function() {
     });
 
     it("should get the whole topic if no start and end are provided", function(done) {
-        pipeProcClient.range("my_topic", {}, function(err, logs) {
+        client.range("my_topic", {}, function(err, logs) {
             expect(err).toBeNull();
             expect(logs).toBeArrayOfSize(3);
             done();
@@ -39,7 +43,7 @@ describe("using range", function() {
     });
 
     it("should honor the limit option", function(done) {
-        pipeProcClient.range("my_topic", {limit: 1}, function(err, logs) {
+        client.range("my_topic", {limit: 1}, function(err, logs) {
             expect(err).toBeNull();
             expect(logs).toBeArrayOfSize(1);
             done();
@@ -47,7 +51,7 @@ describe("using range", function() {
     });
 
     it("should return the whole topic if limit is -1", function(done) {
-        pipeProcClient.range("my_topic", {limit: -1}, function(err, logs) {
+        client.range("my_topic", {limit: -1}, function(err, logs) {
             expect(err).toBeNull();
             expect(logs).toBeArrayOfSize(3);
             done();
@@ -55,7 +59,7 @@ describe("using range", function() {
     });
 
     it("should honor the start option", function(done) {
-        pipeProcClient.range("my_topic", {start: testLogIds[1]}, function(err, logs) {
+        client.range("my_topic", {start: testLogIds[1]}, function(err, logs) {
             expect(err).toBeNull();
             expect(logs).toBeArrayOfSize(2);
             expect(logs[0].id).toEqual(testLogIds[1]);
@@ -64,7 +68,7 @@ describe("using range", function() {
     });
 
     it("should honor the end option", function(done) {
-        pipeProcClient.range("my_topic", {end: testLogIds[1]}, function(err, logs) {
+        client.range("my_topic", {end: testLogIds[1]}, function(err, logs) {
             expect(err).toBeNull();
             expect(logs).toBeArrayOfSize(2);
             expect(logs[1].id).toEqual(testLogIds[1]);
@@ -73,7 +77,7 @@ describe("using range", function() {
     });
 
     it("should honor the start and end option", function(done) {
-        pipeProcClient.range("my_topic", {start: testLogIds[1], end: testLogIds[2]}, function(err, logs) {
+        client.range("my_topic", {start: testLogIds[1], end: testLogIds[2]}, function(err, logs) {
             expect(err).toBeNull();
             expect(logs).toBeArrayOfSize(2);
             expect(logs[0].id).toEqual(testLogIds[1]);
@@ -83,7 +87,7 @@ describe("using range", function() {
     });
 
     it("should honor the exclusive option", function(done) {
-        pipeProcClient.range("my_topic", {
+        client.range("my_topic", {
             start: testLogIds[0],
             end: testLogIds[2],
             exclusive: true
@@ -96,7 +100,7 @@ describe("using range", function() {
     });
 
     it("should accept a timestamp only", function(done) {
-        pipeProcClient.range("my_topic", {
+        client.range("my_topic", {
             start: testLogIds[0].split("-")[0]
         }, function(err, logs) {
             expect(err).toBeNull();
@@ -106,7 +110,7 @@ describe("using range", function() {
     });
 
     it("should accept a sequenceNumber only", function(done) {
-        pipeProcClient.range("my_topic", {
+        client.range("my_topic", {
             start: `:${testLogIds[2].split("-")[1]}`
         }, function(err, logs) {
             expect(err).toBeNull();
@@ -116,7 +120,7 @@ describe("using range", function() {
     });
 
     it("should return an error if the sequenceNumber(tone id) does not exist", function(done) {
-        pipeProcClient.range("my_topic", {
+        client.range("my_topic", {
             start: ":123"
         }, function(err, _logs) {
             expect(err).toBeInstanceOf(Error);
@@ -126,7 +130,7 @@ describe("using range", function() {
     });
 
     it("should return an error if the start option is invalid", function(done) {
-        pipeProcClient.range("my_topic", {
+        client.range("my_topic", {
             start: "invalid"
         }, function(err, _logs) {
             expect(err).toBeInstanceOf(Error);
@@ -136,7 +140,7 @@ describe("using range", function() {
     });
 
     it("should return an error if the end option is invalid", function(done) {
-        pipeProcClient.range("my_topic", {
+        client.range("my_topic", {
             end: "invalid"
         }, function(err, _logs) {
             expect(err).toBeInstanceOf(Error);
@@ -146,7 +150,7 @@ describe("using range", function() {
     });
 
     it("should not return results if start > end", function(done) {
-        pipeProcClient.range("my_topic", {
+        client.range("my_topic", {
             start: testLogIds[1],
             end: testLogIds[0]
         }, function(err, logs) {
@@ -158,8 +162,8 @@ describe("using range", function() {
 
 });
 
-function commitSomeLogs() {
-    return (<Promise<string[]>>pipeProcClient.commit([{
+function commitSomeLogs(client) {
+    return (<Promise<string[]>>client.commit([{
         topic: "my_topic",
         body: {
             hello: 1

@@ -14,7 +14,7 @@
     "log", "structured commit log", "kafka", "redis stream", "multi process"
   ],
   "scripts": {
-    "test": "(tsc || echo \"compiled\") && jest -w 1"
+    "test": "(tsc || echo \"compiled\") && jest"
   },
   "jest": {
     "transform": {

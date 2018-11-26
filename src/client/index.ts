@@ -18,13 +18,17 @@ import {
 } from "./liveproc";
 import {IProc} from "../node/proc";
 import {IPC} from "node-ipc";
+import {ChildProcess} from "child_process";
+import {cpus} from "os";
+
 export interface ICommitLog {
     topic: string;
     body: object;
 }
 
 export interface IPipeProcClient {
-    pipeProcNode?: NodeJS.Process | {};
+    namespace: string;
+    pipeProcNode?: ChildProcess | {};
     ipc?: IPC;
     messageMap: {
         //tslint:disable no-any
@@ -37,6 +41,7 @@ export interface IPipeProcClient {
     ): Promise<string | string[]> | void;
     spawn(
         options?: {
+            namespace?: string,
             memory?: boolean,
             location?: string,
             workers?: number,
@@ -45,7 +50,10 @@ export interface IPipeProcClient {
         callback?: (err?: null | Error, status?: string) => void
     ): Promise<string> | void;
     connect(
-        options?: {isWorker?: boolean},
+        options?: {
+            namespace?: string,
+            isWorker?: boolean
+        },
         callback?: (err?: null | Error, status?: string) => void
     ): Promise<string> | void;
     shutdown(
@@ -139,201 +147,199 @@ export interface IPipeProcClient {
     ): ILiveProc;
 }
 
-export const pipeProcClient: IPipeProcClient = {
-    messageMap: {},
-    spawn: function(options, callback) {
-        var cb = callback;
-        var opts: {
-            memory?: boolean,
-            location?: string,
-            workers?: number,
-            gc?: {minPruneTime?: number, interval?: number} | boolean
-        };
-        if (typeof options === "function") { //only callback passed
-            cb = options;
-            opts = {};
-        } else if (options && typeof options === "object") { //options passed
-            opts = options;
-        } else { //nothing passed
-            opts = {};
-        }
-        if (typeof cb === "function") {
-            return spawn(pipeProcClient, {
-                memory: opts.memory || false,
-                location: opts.location || "./pipeproc_data",
-                workers: (opts.workers && opts.workers >= 1 && opts.workers) || 0,
-                gc: opts.gc
-            }, cb);
-        } else {
-            return new Promise(function(resolve, reject) {
-                spawn(pipeProcClient, {
+//tslint:disable function-name
+export function PipeProc(): IPipeProcClient {
+//tslint:enable function-name
+    const pipeProcClient: IPipeProcClient = {
+        namespace: "default",
+        messageMap: {},
+        spawn: function(options, callback) {
+            var cb = callback;
+            var opts: {
+                namespace?: string,
+                memory?: boolean,
+                location?: string,
+                workers?: number,
+                gc?: {minPruneTime?: number, interval?: number} | boolean
+            };
+            if (typeof options === "function") { //only callback passed
+                cb = options;
+                opts = {};
+            } else if (options && typeof options === "object") { //options passed
+                opts = options;
+            } else { //nothing passed
+                opts = {};
+            }
+            if (opts.namespace && typeof opts.namespace === "string") {
+                this.namespace = opts.namespace;
+            }
+            let workers: number;
+            if ((opts.workers && opts.workers >= 0) || opts.workers === 0) {
+                workers = opts.workers;
+            } else {
+                workers = cpus().length;
+            }
+            if (typeof cb === "function") {
+                return spawn(pipeProcClient, {
                     memory: opts.memory || false,
                     location: opts.location || "./pipeproc_data",
-                    workers: (opts.workers && opts.workers >= 1 && opts.workers) || 0,
+                    workers: workers,
                     gc: opts.gc
-                }, function(err, status) {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve(status);
-                    }
+                }, cb);
+            } else {
+                return new Promise(function(resolve, reject) {
+                    spawn(pipeProcClient, {
+                        memory: opts.memory || false,
+                        location: opts.location || "./pipeproc_data",
+                        workers: workers,
+                        gc: opts.gc
+                    }, function(err, status) {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            resolve(status);
+                        }
+                    });
                 });
-            });
-        }
-    },
-    connect: function(options, callback) {
-        var cb = callback;
-        var opts: {
-            isWorker?: boolean
-        };
-        if (typeof options === "function") { //only callback passed
-            cb = options;
-            opts = {};
-        } else if (options && typeof options === "object") { //options passed
-            opts = options;
-        } else { //nothing passed
-            opts = {};
-        }
-        if (typeof cb === "function") {
-            return connect(pipeProcClient, {
-                isWorker: opts.isWorker || false
-            }, cb);
-        } else {
-            return new Promise(function(resolve, reject) {
-                connect(pipeProcClient, {
+            }
+        },
+        connect: function(options, callback) {
+            var cb = callback;
+            var opts: {
+                namespace?: string,
+                isWorker?: boolean
+            };
+            if (typeof options === "function") { //only callback passed
+                cb = options;
+                opts = {};
+            } else if (options && typeof options === "object") { //options passed
+                opts = options;
+            } else { //nothing passed
+                opts = {};
+            }
+            if (opts.namespace && typeof opts.namespace === "string") {
+                this.namespace = opts.namespace;
+            }
+            if (typeof cb === "function") {
+                return connect(pipeProcClient, {
                     isWorker: opts.isWorker || false
-                }, function(err, status) {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve(status);
-                    }
+                }, cb);
+            } else {
+                return new Promise(function(resolve, reject) {
+                    connect(pipeProcClient, {
+                        isWorker: opts.isWorker || false
+                    }, function(err, status) {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            resolve(status);
+                        }
+                    });
                 });
-            });
-        }
-    },
-    shutdown: function(callback) {
-        if (typeof callback === "function") {
-            return shutdown(pipeProcClient, callback);
-        } else {
-            return new Promise(function(resolve, reject) {
-                shutdown(pipeProcClient, function(err, status) {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve(status);
-                    }
+            }
+        },
+        shutdown: function(callback) {
+            if (typeof callback === "function") {
+                return shutdown(pipeProcClient, callback);
+            } else {
+                return new Promise(function(resolve, reject) {
+                    shutdown(pipeProcClient, function(err, status) {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            resolve(status);
+                        }
+                    });
                 });
-            });
-        }
-    },
-    range: function(topic, options, callback) {
-        var cb = callback;
-        var opts: {
-            start?: string;
-            end?: string;
-            limit?: number;
-            exclusive?: boolean;
-        };
-        if (typeof options === "function") { //only callback passed
-            cb = options;
-            opts = {};
-        } else if (options && typeof options === "object") { //options passed
-            opts = options;
-        } else { //nothing passed
-            opts = {};
-        }
-        if (typeof cb === "function") {
-            return range(pipeProcClient, topic, {
-                start: opts.start || "",
-                end: opts.end || "",
-                limit: opts.limit || -1,
-                exclusive: opts.exclusive || false,
-                reverse: false
-            }, cb);
-        } else {
-            return new Promise(function(resolve, reject) {
-                range(pipeProcClient, topic, {
+            }
+        },
+        range: function(topic, options, callback) {
+            var cb = callback;
+            var opts: {
+                start?: string;
+                end?: string;
+                limit?: number;
+                exclusive?: boolean;
+            };
+            if (typeof options === "function") { //only callback passed
+                cb = options;
+                opts = {};
+            } else if (options && typeof options === "object") { //options passed
+                opts = options;
+            } else { //nothing passed
+                opts = {};
+            }
+            if (typeof cb === "function") {
+                return range(pipeProcClient, topic, {
                     start: opts.start || "",
                     end: opts.end || "",
                     limit: opts.limit || -1,
                     exclusive: opts.exclusive || false,
                     reverse: false
-                }, function(err, results) {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve(results);
-                    }
+                }, cb);
+            } else {
+                return new Promise(function(resolve, reject) {
+                    range(pipeProcClient, topic, {
+                        start: opts.start || "",
+                        end: opts.end || "",
+                        limit: opts.limit || -1,
+                        exclusive: opts.exclusive || false,
+                        reverse: false
+                    }, function(err, results) {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            resolve(results);
+                        }
+                    });
                 });
-            });
-        }
-    },
-    revrange: function(topic, options, callback) {
-        var cb = callback;
-        var opts: {
-            start?: string;
-            end?: string;
-            limit?: number;
-            exclusive?: boolean;
-        };
-        if (typeof options === "function") { //only callback passed
-            cb = options;
-            opts = {};
-        } else if (options && typeof options === "object") { //options passed
-            opts = options;
-        } else { //nothing passed
-            opts = {};
-        }
-        if (typeof cb === "function") {
-            return range(pipeProcClient, topic, {
-                start: opts.start || "",
-                end: opts.end || "",
-                limit: opts.limit || -1,
-                exclusive: opts.exclusive || false,
-                reverse: true
-            }, cb);
-        } else {
-            return new Promise(function(resolve, reject) {
-                range(pipeProcClient, topic, {
+            }
+        },
+        revrange: function(topic, options, callback) {
+            var cb = callback;
+            var opts: {
+                start?: string;
+                end?: string;
+                limit?: number;
+                exclusive?: boolean;
+            };
+            if (typeof options === "function") { //only callback passed
+                cb = options;
+                opts = {};
+            } else if (options && typeof options === "object") { //options passed
+                opts = options;
+            } else { //nothing passed
+                opts = {};
+            }
+            if (typeof cb === "function") {
+                return range(pipeProcClient, topic, {
                     start: opts.start || "",
                     end: opts.end || "",
                     limit: opts.limit || -1,
                     exclusive: opts.exclusive || false,
                     reverse: true
-                }, function(err, results) {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve(results);
-                    }
+                }, cb);
+            } else {
+                return new Promise(function(resolve, reject) {
+                    range(pipeProcClient, topic, {
+                        start: opts.start || "",
+                        end: opts.end || "",
+                        limit: opts.limit || -1,
+                        exclusive: opts.exclusive || false,
+                        reverse: true
+                    }, function(err, results) {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            resolve(results);
+                        }
+                    });
                 });
-            });
-        }
-    },
-    length: function(topic, callback) {
-        if (typeof callback === "function") {
-            return range(pipeProcClient, topic, {
-                start: "",
-                end: "",
-                limit: 1,
-                exclusive: false,
-                reverse: true
-            }, function(err, results) {
-                if (err) {
-                    callback(err);
-                } else {
-                    if (results && results[0]) {
-                        const l = parseInt(results[0].id.split("-")[1]) + 1;
-                        callback(null, l);
-                    } else {
-                        callback(null, 0);
-                    }
-                }
-            });
-        } else {
-            return new Promise(function(resolve, reject) {
-                range(pipeProcClient, topic, {
+            }
+        },
+        length: function(topic, callback) {
+            if (typeof callback === "function") {
+                return range(pipeProcClient, topic, {
                     start: "",
                     end: "",
                     limit: 1,
@@ -341,170 +347,193 @@ export const pipeProcClient: IPipeProcClient = {
                     reverse: true
                 }, function(err, results) {
                     if (err) {
-                        reject(err);
+                        callback(err);
                     } else {
                         if (results && results[0]) {
                             const l = parseInt(results[0].id.split("-")[1]) + 1;
-                            resolve(l);
+                            callback(null, l);
                         } else {
-                            resolve(0);
+                            callback(null, 0);
                         }
                     }
                 });
-            });
-        }
-    },
-    commit: function(commitLog, callback) {
-        if (typeof callback === "function") {
-            return commit(pipeProcClient, commitLog, callback);
-        } else {
-            return new Promise(function(resolve, reject) {
-                commit(pipeProcClient, commitLog, function(err, logId) {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve(logId);
-                    }
+            } else {
+                return new Promise(function(resolve, reject) {
+                    range(pipeProcClient, topic, {
+                        start: "",
+                        end: "",
+                        limit: 1,
+                        exclusive: false,
+                        reverse: true
+                    }, function(err, results) {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            if (results && results[0]) {
+                                const l = parseInt(results[0].id.split("-")[1]) + 1;
+                                resolve(l);
+                            } else {
+                                resolve(0);
+                            }
+                        }
+                    });
                 });
-            });
-        }
-    },
-    proc: function(topic, options, callback) {
-        if (typeof callback === "function") {
-            return proc(pipeProcClient, topic, options, callback);
-        } else {
-            return new Promise(function(resolve, reject) {
-                proc(pipeProcClient, topic, options, function(err, result) {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve(result);
-                    }
+            }
+        },
+        commit: function(commitLog, callback) {
+            if (typeof callback === "function") {
+                return commit(pipeProcClient, commitLog, callback);
+            } else {
+                return new Promise(function(resolve, reject) {
+                    commit(pipeProcClient, commitLog, function(err, logId) {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            resolve(logId);
+                        }
+                    });
                 });
-            });
-        }
-    },
-    systemProc: function(options, callback) {
-        if (typeof callback === "function") {
-            return systemProc(pipeProcClient, options, callback);
-        } else {
-            return new Promise(function(resolve, reject) {
-                systemProc(pipeProcClient, options, function(err, myProc) {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve(myProc);
-                    }
+            }
+        },
+        proc: function(topic, options, callback) {
+            if (typeof callback === "function") {
+                return proc(pipeProcClient, topic, options, callback);
+            } else {
+                return new Promise(function(resolve, reject) {
+                    proc(pipeProcClient, topic, options, function(err, result) {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            resolve(result);
+                        }
+                    });
                 });
-            });
-        }
-    },
-    ack: function(procName, callback) {
-        if (typeof callback === "function") {
-            return ack(pipeProcClient, procName, callback);
-        } else {
-            return new Promise(function(resolve, reject) {
-                ack(pipeProcClient, procName, function(err, logId) {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve(logId);
-                    }
+            }
+        },
+        systemProc: function(options, callback) {
+            if (typeof callback === "function") {
+                return systemProc(pipeProcClient, options, callback);
+            } else {
+                return new Promise(function(resolve, reject) {
+                    systemProc(pipeProcClient, options, function(err, myProc) {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            resolve(myProc);
+                        }
+                    });
                 });
-            });
-        }
-    },
-    ackCommit: function(procName, commitLog, callback) {
-        if (typeof callback === "function") {
-            return ackCommit(pipeProcClient, procName, commitLog, callback);
-        } else {
-            return new Promise(function(resolve, reject) {
-                ackCommit(pipeProcClient, procName, commitLog, function(err, results) {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve(results);
-                    }
+            }
+        },
+        ack: function(procName, callback) {
+            if (typeof callback === "function") {
+                return ack(pipeProcClient, procName, callback);
+            } else {
+                return new Promise(function(resolve, reject) {
+                    ack(pipeProcClient, procName, function(err, logId) {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            resolve(logId);
+                        }
+                    });
                 });
-            });
-        }
-    },
-    inspectProc: function(procName, callback) {
-        if (typeof callback === "function") {
-            return inspectProc(pipeProcClient, procName, callback);
-        } else {
-            return new Promise(function(resolve, reject) {
-                inspectProc(pipeProcClient, procName, function(err, myProc) {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve(myProc);
-                    }
+            }
+        },
+        ackCommit: function(procName, commitLog, callback) {
+            if (typeof callback === "function") {
+                return ackCommit(pipeProcClient, procName, commitLog, callback);
+            } else {
+                return new Promise(function(resolve, reject) {
+                    ackCommit(pipeProcClient, procName, commitLog, function(err, results) {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            resolve(results);
+                        }
+                    });
                 });
-            });
-        }
-    },
-    destroyProc: function(procName, callback) {
-        if (typeof callback === "function") {
-            return destroyProc(pipeProcClient, procName, callback);
-        } else {
-            return new Promise(function(resolve, reject) {
-                destroyProc(pipeProcClient, procName, function(err, myProc) {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve(myProc);
-                    }
+            }
+        },
+        inspectProc: function(procName, callback) {
+            if (typeof callback === "function") {
+                return inspectProc(pipeProcClient, procName, callback);
+            } else {
+                return new Promise(function(resolve, reject) {
+                    inspectProc(pipeProcClient, procName, function(err, myProc) {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            resolve(myProc);
+                        }
+                    });
                 });
-            });
-        }
-    },
-    disableProc: function(procName, callback) {
-        if (typeof callback === "function") {
-            return disableProc(pipeProcClient, procName, callback);
-        } else {
-            return new Promise(function(resolve, reject) {
-                disableProc(pipeProcClient, procName, function(err, myProc) {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve(myProc);
-                    }
+            }
+        },
+        destroyProc: function(procName, callback) {
+            if (typeof callback === "function") {
+                return destroyProc(pipeProcClient, procName, callback);
+            } else {
+                return new Promise(function(resolve, reject) {
+                    destroyProc(pipeProcClient, procName, function(err, myProc) {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            resolve(myProc);
+                        }
+                    });
                 });
-            });
-        }
-    },
-    resumeProc: function(procName, callback) {
-        if (typeof callback === "function") {
-            return resumeProc(pipeProcClient, procName, callback);
-        } else {
-            return new Promise(function(resolve, reject) {
-                resumeProc(pipeProcClient, procName, function(err, myProc) {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve(myProc);
-                    }
+            }
+        },
+        disableProc: function(procName, callback) {
+            if (typeof callback === "function") {
+                return disableProc(pipeProcClient, procName, callback);
+            } else {
+                return new Promise(function(resolve, reject) {
+                    disableProc(pipeProcClient, procName, function(err, myProc) {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            resolve(myProc);
+                        }
+                    });
                 });
-            });
-        }
-    },
-    reclaimProc: function(procName, callback) {
-        if (typeof callback === "function") {
-            return reclaimProc(pipeProcClient, procName, callback);
-        } else {
-            return new Promise(function(resolve, reject) {
-                reclaimProc(pipeProcClient, procName, function(err, lastClaimedRange) {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve(lastClaimedRange);
-                    }
+            }
+        },
+        resumeProc: function(procName, callback) {
+            if (typeof callback === "function") {
+                return resumeProc(pipeProcClient, procName, callback);
+            } else {
+                return new Promise(function(resolve, reject) {
+                    resumeProc(pipeProcClient, procName, function(err, myProc) {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            resolve(myProc);
+                        }
+                    });
                 });
-            });
+            }
+        },
+        reclaimProc: function(procName, callback) {
+            if (typeof callback === "function") {
+                return reclaimProc(pipeProcClient, procName, callback);
+            } else {
+                return new Promise(function(resolve, reject) {
+                    reclaimProc(pipeProcClient, procName, function(err, lastClaimedRange) {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            resolve(lastClaimedRange);
+                        }
+                    });
+                });
+            }
+        },
+        liveProc: function(options) {
+            return createLiveProc(pipeProcClient, options);
         }
-    },
-    liveProc: function(options) {
-        return createLiveProc(pipeProcClient, options);
-    }
-};
+    };
+
+    return pipeProcClient;
+}

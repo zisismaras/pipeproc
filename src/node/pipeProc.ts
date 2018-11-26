@@ -4,6 +4,7 @@ import LevelDOWN from "leveldown";
 import MemDOWN from "memdown";
 import {
     IPipeProcMessage,
+    IPipeProcInitIPCMessage,
 
     IPipeProcLogMessage,
     IPipeProcProcMessage,
@@ -28,7 +29,8 @@ import {
     IPipeProcDisableProcMessageReply,
     IPipeProcResumeProcMessageReply,
     IPipeProcReclaimProcMessageReply,
-    IPipeProcSystemProcMessageReply
+    IPipeProcSystemProcMessageReply,
+    prepareMessage
 } from "../common/messages";
 import {commitLog} from "./commitLog";
 import {restoreState} from "./restoreState";
@@ -49,6 +51,8 @@ import {collect} from "./gc/collect";
 const d = debug("pipeproc:node");
 
 let db: LevelDOWN.LevelDown;
+
+let ipcNamespace: string;
 
 export interface IActiveTopics {
     [key: string]: {
@@ -118,7 +122,7 @@ registerMessage<IPipeProcSystemInitMessage["data"], IPipeProcMessage["data"]>(me
             } else {
                 spawnWorkers(
                     data.options.workers || 0,
-                    activeWorkers, activeProcs, activeSystemProcs,
+                    activeWorkers, activeProcs, activeSystemProcs, ipcNamespace,
                 function(spawnErr) {
                     if (err) {
                         callback((spawnErr && spawnErr.message) || "uknown_error");
@@ -422,5 +426,16 @@ registerMessage<IPipeProcReclaimProcMessage["data"], IPipeProcReclaimProcMessage
     }
 });
 
-initializeMessages(writeBuffer, messageRegistry);
+const initIPCListener = function(e: IPipeProcInitIPCMessage) {
+    if (e.type === "init_ipc") {
+        ipcNamespace = e.data.namespace;
+        process.removeListener("message", initIPCListener);
+        initializeMessages(writeBuffer, messageRegistry, ipcNamespace);
+        if (process && typeof process.send === "function") {
+            process.send(prepareMessage({type: "ipc_established", msgKey: e.msgKey}));
+        }
+    }
+};
+
+process.on("message", initIPCListener);
 startWriteBuffer(writeBuffer);

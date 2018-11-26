@@ -4,13 +4,15 @@ import {
     IPipeProcRegisterSystemProcsMessage,
     prepareMessage
 } from "../../common/messages";
-import {pipeProcClient, ICommitLog} from "../../client";
+import {PipeProc, ICommitLog} from "../../client";
 import {IProc} from "../../node/proc";
 import {series, forever} from "async";
 import debug from "debug";
 import { ISystemProc } from "../systemProc";
 import {ExponentialStrategy} from "backoff";
 const d = debug(`pipeproc:worker:${process.pid}`);
+
+const pipeProcClient = PipeProc();
 
 function sendMessageToNode(msg: IPipeProcMessage, cb?: () => void): void {
     if (process && typeof process.send === "function") {
@@ -42,7 +44,7 @@ const processorMap: IProcessorMap = {};
 
 process.on("message", function(e: IPipeProcWorkerInitMessage) {
     if (e.type === "worker_init") {
-        pipeProcClient.connect({isWorker: true}, function(err, status) {
+        pipeProcClient.connect({isWorker: true, namespace: e.data.namespace}, function(err, status) {
             if (err) {
                 sendMessageToNode(prepareMessage({
                     type: "connection_error",
