@@ -68,6 +68,7 @@ export function connect(
         client.pipeProcNode = {};
     }
     const ipc = new IPC();
+    ipc.config.socketRoot = `${tmpdir()}/`;
     ipc.config.appspace = "pipeproc.";
     ipc.config.id = client.namespace;
     ipc.config.retry = 100;
