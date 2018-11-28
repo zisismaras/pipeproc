@@ -71,13 +71,25 @@ describe("connecting to an existing node", function() {
     });
 
     it("should be able to connect to an existing node", function(done) {
-        //simulate a not yet connected client
-        client.ipc.disconnect(client.namespace);
-        delete client.ipc;
-        client.connect({namespace: namespace}, function(err, status) {
+        const client2 = PipeProc();
+        client2.connect({namespace: namespace}, function(err, status) {
             expect(err).toBeNull();
             expect(status).toEqual("connected");
             done();
+        });
+    });
+
+    it("should allow multiple clients to connect", function(done) {
+        const client2 = PipeProc();
+        const client3 = PipeProc();
+        client2.connect({namespace: namespace}, function(err, status) {
+            expect(err).toBeNull();
+            expect(status).toEqual("connected");
+            client3.connect({namespace: namespace}, function(err2, status2) {
+                expect(err2).toBeNull();
+                expect(status2).toEqual("connected");
+                done();
+            });
         });
     });
 
