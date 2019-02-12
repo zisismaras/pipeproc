@@ -1,6 +1,6 @@
 {
   "name": "pipeproc",
-  "version": "0.1.4",
+  "version": "0.1.6",
   "license": "BSD-3-Clause",
   "author": {
     "name": "Zisis Maras",
@@ -12,8 +12,7 @@
   "main": "./lib/client/index.js",
   "typings": "./lib/client/index.d.ts",
   "files": [
-    "lib",
-    "typings"
+    "lib"
   ],
   "keywords": [
     "log",
@@ -23,7 +22,8 @@
     "multi process"
   ],
   "scripts": {
-    "test": "(tsc || echo \"compiled\") && jest"
+    "test": "(tsc || echo \"compiled\") && jest",
+    "prepublishOnly": "tsc --build --clean && tsc --build && cp -r ./src/typings ./lib/typings"
   },
   "jest": {
     "transform": {
@@ -56,18 +56,18 @@
     "typescript": "~3.3.0"
   },
   "dependencies": {
-    "async": "2.6.1",
     "@types/async": "2.0.49",
-    "backoff": "2.5.0",
     "@types/backoff": "2.5.1",
-    "debug": "3.1.0",
     "@types/debug": "0.0.30",
-    "leveldown": "4.0.1",
     "@types/leveldown": "1.7.1",
+    "@types/node": "10.5.4",
+    "@types/uuid": "3.4.3",
+    "async": "2.6.1",
+    "backoff": "2.5.0",
+    "debug": "3.1.0",
+    "leveldown": "4.0.1",
     "memdown": "3.0.0",
     "node-ipc": "9.1.1",
-    "uuid": "3.3.2",
-    "@types/uuid": "3.4.3",
-    "@types/node": "10.5.4"
+    "uuid": "3.3.2"
   }
 }
