@@ -37,7 +37,7 @@ describe("committing logs", function() {
         })).then(function(logId) {
             expect(logId).toBeString();
             expect(logId.split("-")[1]).toEqual("0");
-            expect(parseInt(logId.split("-")[0])).toBeLessThan(Date.now());
+            expect(parseInt(logId.split("-")[0])).toBeLessThanOrEqual(Date.now());
             done();
         }).catch(function(err) {
             done.fail(err);
@@ -81,8 +81,8 @@ describe("committing logs", function() {
             const ts1 = parseInt(logIds[0].split("-")[0]);
             const ts2 = parseInt(logIds[1].split("-")[0]);
             expect(ts1).toEqual(ts2);
-            expect(ts1).toBeLessThan(Date.now());
-            expect(ts2).toBeLessThan(Date.now());
+            expect(ts1).toBeLessThanOrEqual(Date.now());
+            expect(ts2).toBeLessThanOrEqual(Date.now());
             done();
         }).catch(function(err) {
             done.fail(err);
