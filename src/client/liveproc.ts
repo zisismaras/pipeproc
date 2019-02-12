@@ -43,7 +43,10 @@ export function createLiveProc(
     const name = `liveproc-${uuid()}`;
     const lp: ILiveProc = {
         changes: function(cb) {
-            if (active) return cb.call(lp, new Error("liveproc_already_active"));
+            if (active) {
+                cb.call(lp, new Error("liveproc_already_active"));
+                return lp;
+            }
             //start loop that calls changesFn and also locks by processing flag
             const strategy = new ExponentialStrategy({
                 randomisationFactor: 0.5,
