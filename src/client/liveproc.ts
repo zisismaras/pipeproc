@@ -13,13 +13,15 @@ import {IProc} from "../node/proc";
 import {v4 as uuid} from "uuid";
 import {ExponentialStrategy} from "backoff";
 import {forever} from "async";
-// import debug from "debug";
-// const d = debug("pipeproc:client:liveproc");
+import debug from "debug";
+const d = debug("pipeproc:client:liveproc");
 
 type ChangesCb = (
     this: ILiveProc,
-    err?: null | Error, result?: {id: string, body: object} | {id: string, body: object}[]
-) => void;
+    err: null | Error,
+    result: {id: string, body: object} | {id: string, body: object}[] | null,
+    nextCb: () => void
+) => void | Promise<void>;
 export interface ILiveProc {
     changes: (cb: ChangesCb) => ILiveProc;
     inspect: () => Promise<IProc>;
@@ -29,6 +31,7 @@ export interface ILiveProc {
     reclaim: () => Promise<string>;
     ack: () => Promise<string>;
     ackCommit: (commitLog: ICommitLog) => void;
+    cancel: () => Promise<void>;
 }
 export function createLiveProc(
     client: IPipeProcClient,
@@ -39,14 +42,11 @@ export function createLiveProc(
     }
 ): ILiveProc {
     let processing = false;
-    let active = false;
     const name = `liveproc-${uuid()}`;
+    d(`starting liveProc: ${name}`);
+    let stop = false;
     const lp: ILiveProc = {
         changes: function(cb) {
-            if (active) {
-                cb.call(lp, new Error("liveproc_already_active"));
-                return lp;
-            }
             //start loop that calls changesFn and also locks by processing flag
             const strategy = new ExponentialStrategy({
                 randomisationFactor: 0.5,
@@ -55,19 +55,33 @@ export function createLiveProc(
                 factor: 2
             });
             forever(function(next) {
+                if (stop) return next("stop");
                 if (processing) return setTimeout(next, strategy.next());
                 processing = true;
-                return changesFn(function(err, result) {
+                return getLog(function(err, result) {
                     processing  = false;
                     if (err) {
-                        cb.call(lp, err);
-                        setTimeout(next, strategy.next());
+                        const nextCb = function() {
+                            setTimeout(next, strategy.next());
+                        };
+                        const cbResult = cb.call(lp, err, null, nextCb);
+                        if (cbResult instanceof Promise) {
+                            cbResult.then(function() {
+                                nextCb();
+                            });
+                        }
                     } else if (result) {
-                        cb.call(lp, null, result);
-                        strategy.reset();
-                        setImmediate(next);
+                        const nextCb = function() {
+                            strategy.reset();
+                            setImmediate(next);
+                        };
+                        const cbResult = cb.call(lp, null, result, nextCb);
+                        if (cbResult instanceof Promise) {
+                            cbResult.then(function() {
+                                nextCb();
+                            });
+                        }
                     } else {
-                        cb.call(lp);
                         setTimeout(next, strategy.next());
                     }
                 });
@@ -157,17 +171,33 @@ export function createLiveProc(
                     }
                 });
             });
+        },
+        cancel: function() {
+            d(`stopping liveProc: ${name}`);
+            return this.disable().then(function() {
+                stop = true;
+            });
         }
     };
-    function changesFn(cb: ChangesCb) {
-        active = true;
+    function getLog(
+        cb: (
+            err: Error | null,
+            log: {
+                id: string;
+                body: object;
+            } | {
+                id: string;
+                body: object;
+            }[] | undefined
+        ) => void
+    ) {
         proc(client, options.topic, {
             name: name,
             offset: options.mode === "live" ? "$>" : ">",
             count: options.count,
             onMaxReclaimsReached: "continue"
-        }, function(err, pr) {
-            cb.call(lp, err, pr);
+        }, function(err, log) {
+            cb(err || null, log);
         });
     }
 

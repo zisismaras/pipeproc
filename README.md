@@ -546,16 +546,21 @@ liveProc(
 pipeProcClient.liveProc({
     topic: "my_topic",
     mode: "all"
-}).changes(function(err, logs) {
+}).changes(function(err, logs, next) {
     if (err) {
         //reclaim has to be called manually
-        this.reclaim();
+        return this.reclaim();
     } else if (logs) {
         //do something with the logs
-        this.ack(); //ack() is also manual
+        //ack() is also manual
+        this.ack().then(function() {
+          next();
+        });
     }
 });
 ```
+
+Inside the `changes` function you can either return a promise or use the `next` callback to keep listening for changes.  
 
 liveProc instances also have simpler versions of all of the proc's methods (that implicitly point to the underlying proc)
 
@@ -569,6 +574,7 @@ interface ILiveProc {
     reclaim: () => Promise<string>;
     ack: () => Promise<string>;
     ackCommit: (commitLog: ICommitLog) => void;
+    cancel: () => Promise<void>;
 }
 ```
 
