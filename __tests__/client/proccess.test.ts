@@ -11,29 +11,25 @@ describe("spawning the node", function() {
         client = PipeProc();
     });
 
-    afterEach(function(done) {
+    afterEach(function() {
         if (client.pipeProcNode) {
-            client.shutdown(function(err) {
-                if (err) return done.fail(err);
-                done();
-            });
+            return client.shutdown();
         } else {
-            done();
+            return Promise.resolve();
         }
     });
 
     it("should spawn correctly", function(done) {
-        client.spawn({memory: true, workers: 0, namespace: uuid()}, function(err, status) {
-            expect(err).toBeNull();
+        client.spawn({memory: true, workers: 0, namespace: uuid()}).then(function(status) {
             expect(status).toEqual("spawned_and_connected");
             done();
         });
     });
 
     it("should return a warning if spawned twice", function(done) {
-        (<Promise<string>>client.spawn({memory: true, workers: 0, namespace: uuid()})).then(function(status) {
+        client.spawn({memory: true, workers: 0, namespace: uuid()}).then(function(status) {
             expect(status).toEqual("spawned_and_connected");
-            (<Promise<string>>client.spawn({memory: true})).then(function(status2) {
+            client.spawn({memory: true}).then(function(status2) {
                 expect(status2).toEqual("node_already_active");
                 done();
             }).catch(function(err) {
@@ -52,50 +48,40 @@ describe("connecting to an existing node", function() {
     beforeEach(function(done) {
         client = PipeProc();
         namespace = uuid();
-        (<Promise<string>>client.spawn({memory: true, workers: 0, namespace: namespace})).then(function() {
+        client.spawn({memory: true, workers: 0, namespace: namespace}).then(function() {
             done();
         }).catch(function(err) {
             done.fail(err);
         });
     });
 
-    afterEach(function(done) {
+    afterEach(function() {
         if (client.pipeProcNode) {
-            client.shutdown(function(err) {
-                if (err) return done.fail(err);
-                done();
-            });
+            return client.shutdown();
         } else {
-            done();
+            return Promise.resolve();
         }
     });
 
     it("should be able to connect to an existing node", function(done) {
         const client2 = PipeProc();
-        client2.connect({namespace: namespace}, function(err, status) {
-            expect(err).toBeNull();
+        client2.connect({namespace: namespace}).then(function(status) {
             expect(status).toEqual("connected");
             done();
         });
     });
 
-    it("should allow multiple clients to connect", function(done) {
+    it("should allow multiple clients to connect", async function() {
         const client2 = PipeProc();
         const client3 = PipeProc();
-        client2.connect({namespace: namespace}, function(err, status) {
-            expect(err).toBeNull();
-            expect(status).toEqual("connected");
-            client3.connect({namespace: namespace}, function(err2, status2) {
-                expect(err2).toBeNull();
-                expect(status2).toEqual("connected");
-                done();
-            });
-        });
+        const status = await client2.connect({namespace: namespace});
+        expect(status).toEqual("connected");
+        const status2 = await client3.connect({namespace: namespace});
+        expect(status2).toEqual("connected");
     });
 
     it("should return a notice if we are already connected", function(done) {
-        client.connect({namespace: namespace}, function(err, status) {
-            expect(err).toBeNull();
+        client.connect({namespace: namespace}).then(function(status) {
             expect(status).toEqual("already_connected");
             done();
         });
@@ -111,9 +97,8 @@ describe("shutting down a node", function() {
 
     it("should be able to shutdown a node", function(done) {
         //spawn it first
-        (<Promise<string>>client.spawn({memory: true, workers: 0, namespace: uuid()})).then(function() {
-            client.shutdown(function(err, status) {
-                expect(err).toBeNull();
+        client.spawn({memory: true, workers: 0, namespace: uuid()}).then(function() {
+            client.shutdown().then(function(status) {
                 expect(status).toEqual("closed");
                 done();
             });
@@ -123,10 +108,9 @@ describe("shutting down a node", function() {
     });
 
     it("should raise an error if there is no active node", function(done) {
-        client.shutdown(function(err, status) {
+        client.shutdown().catch(function(err) {
             expect(err).toBeInstanceOf(Error);
             expect(err.message).toEqual("no_active_node");
-            expect(status).toBeUndefined();
             done();
         });
     });

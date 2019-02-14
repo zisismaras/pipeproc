@@ -80,8 +80,6 @@ pipeProcClient.spawn().then(function() {
 });
 ```
 
-All client options return a Promise but can also accept a standard nodejs `callback(err, data)` instead.
-
 ## Installing
 
 ```bash
@@ -120,8 +118,7 @@ spawn(
         workers?: number,
         //tune the garbage collector settings (check the gc section below)
         gc?: {minPruneTime?: number, interval?: number} | boolean
-    },
-    callback?: (err?: null | Error, status?: string) => void
+    }
 ): Promise<string>;
 ```
 
@@ -136,8 +133,7 @@ connect(
     options?: {
         //use a different ipc namespace
         namespace?: string
-    },
-    callback?: (err?: null | Error, status?: string) => void
+    }
 ): Promise<string>;
 ```
 
@@ -146,9 +142,7 @@ connect(
 Gracefully close the PipeProc instance.
 
 ```typescript
-shutdown(
-    callback?: (err?: null | Error, status?: string) => void
-): Promise<string>;
+shutdown(): Promise<string>;
 ```
 
 ## Committing logs
@@ -235,8 +229,7 @@ range(
         end?: string,
         limit?: number,
         exclusive?: boolean
-    },
-    callback?: (err?: null | Error, result?: {id: string, body: object}[]) => void
+    }
 ): Promise<{id: string, body: object}[]>;
 ```
 
@@ -382,8 +375,7 @@ proc(
         maxReclaims?: number,
         reclaimTimeout?: number,
         onMaxReclaimsReached?: "disable" | "continue"
-    },
-    callback?: (err?: null | Error, result?: {id: string, body: object} | {id: string, body: object}[]) => void
+    }
 ): Promise<null | {id: string, body: object} | {id: string, body: object}[]>;
 ```
 
@@ -401,8 +393,7 @@ Acking the proc is an explicit operation and should be run after the log has suc
 
 ```typescript
 ack(
-    procName: string,
-    callback?: (err?: null | Error, logId?: string) => void
+    procName: string
 ): Promise<string>;
 ```
 

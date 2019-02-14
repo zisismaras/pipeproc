@@ -13,7 +13,7 @@ describe("using revrange", function() {
     beforeEach(function(done) {
         client = PipeProc();
 
-        (<Promise<string>>client.spawn({memory: true, workers: 0, namespace: uuid()})).then(function() {
+        client.spawn({memory: true, workers: 0, namespace: uuid()}).then(function() {
             commitSomeLogs(client).then(function(logs) {
                 testLogIds = logs;
                 done();
@@ -25,14 +25,11 @@ describe("using revrange", function() {
         });
     });
 
-    afterEach(function(done) {
+    afterEach(function() {
         if (client.pipeProcNode) {
-            client.shutdown(function(err) {
-                if (err) return done.fail(err);
-                done();
-            });
+            return client.shutdown();
         } else {
-            done();
+            return Promise.resolve();
         }
     });
 
@@ -40,8 +37,7 @@ describe("using revrange", function() {
         client.revrange("my_topic", {
             start: testLogIds[0],
             end: testLogIds[1]
-        }, function(err, logs) {
-            expect(err).toBeNull();
+        }).then(function(logs) {
             expect(logs).toBeArrayOfSize(0);
             done();
         });
@@ -50,8 +46,7 @@ describe("using revrange", function() {
     it("should return the results in a reversed order", function(done) {
         client.revrange("my_topic", {
             start: testLogIds[2]
-        }, function(err, logs) {
-            expect(err).toBeNull();
+        }).then(function(logs) {
             expect(logs).toBeArrayOfSize(3);
             expect(logs[0].id).toEqual(testLogIds[2]);
             expect(logs[1].id).toEqual(testLogIds[1]);
@@ -63,7 +58,7 @@ describe("using revrange", function() {
 });
 
 function commitSomeLogs(client) {
-    return (<Promise<string[]>>client.commit([{
+    return client.commit([{
         topic: "my_topic",
         body: {
             hello: 1
@@ -78,5 +73,5 @@ function commitSomeLogs(client) {
         body: {
             hello: 1
         }
-    }]));
+    }]);
 }

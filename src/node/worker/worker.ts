@@ -44,22 +44,22 @@ const processorMap: IProcessorMap = {};
 
 process.on("message", function(e: IPipeProcWorkerInitMessage) {
     if (e.type === "worker_init") {
-        pipeProcClient.connect({isWorker: true, namespace: e.data.namespace}, function(err, status) {
-            if (err) {
-                sendMessageToNode(prepareMessage({
-                    type: "connection_error",
-                    msgKey: e.msgKey,
-                    errStatus: err.message
-                }));
-            } else {
-                sendMessageToNode(prepareMessage({
-                    type: "connected",
-                    msgKey: e.msgKey,
-                    data: {
-                        status: status
-                    }
-                }));
-            }
+        pipeProcClient.connect({isWorker: true, namespace: e.data.namespace})
+        .then(function(status) {
+            sendMessageToNode(prepareMessage({
+                type: "connected",
+                msgKey: e.msgKey,
+                data: {
+                    status: status
+                }
+            }));
+        })
+        .catch(function(err) {
+            sendMessageToNode(prepareMessage({
+                type: "connection_error",
+                msgKey: e.msgKey,
+                errStatus: err.message
+            }));
         });
     }
 });
@@ -155,15 +155,16 @@ function constructProcExec(myProc: IProc, systemProcs: ISystemProc[]): Error | v
         let ackCommitErr: Error;
         series([
             function(cb) {
-                pipeProcClient.proc(myProc.topic, myProc, function(err, log) {
-                    if (err) return cb(err);
+                pipeProcClient.proc(myProc.topic, myProc)
+                .then(function(log) {
                     if ((log && !Array.isArray(log)) || (Array.isArray(log) && log.length > 0)) {
                         myLog = log;
                         cb();
                     } else {
                         cb("no_results");
                     }
-                });
+                })
+                .catch(cb);
             },
             function(cb) {
                 try {
@@ -267,13 +268,11 @@ function constructProcExec(myProc: IProc, systemProcs: ISystemProc[]): Error | v
             },
             function(cb) {
                 if (processorErr) {
-                    pipeProcClient.reclaimProc(myProc.name, function(err) {
-                        if (err) {
-                            cb(err);
-                        } else {
-                            cb();
-                        }
-                    });
+                    pipeProcClient.reclaimProc(myProc.name)
+                    .then(function() {
+                        cb();
+                    })
+                    .catch(cb);
                 } else {
                     setImmediate(cb);
                 }
@@ -283,17 +282,21 @@ function constructProcExec(myProc: IProc, systemProcs: ISystemProc[]): Error | v
                     setImmediate(cb);
                 } else {
                     if (shouldCommit) {
-                        pipeProcClient.ackCommit(myProc.name, myCommitLog, function(err) {
-                            if (err) {
-                                ackCommitErr = err;
-                            }
+                        pipeProcClient.ackCommit(myProc.name, myCommitLog)
+                        .then(function() {
+                            cb();
+                        })
+                        .catch(function(err) {
+                            ackCommitErr = err;
                             cb();
                         });
                     } else {
-                        pipeProcClient.ack(myProc.name, function(err) {
-                            if (err) {
-                                ackCommitErr = err;
-                            }
+                        pipeProcClient.ack(myProc.name)
+                        .then(function() {
+                            cb();
+                        })
+                        .catch(function(err) {
+                            ackCommitErr = err;
                             cb();
                         });
                     }
@@ -301,13 +304,11 @@ function constructProcExec(myProc: IProc, systemProcs: ISystemProc[]): Error | v
             },
             function(cb) {
                 if (ackCommitErr) {
-                    pipeProcClient.reclaimProc(myProc.name, function(err) {
-                        if (err) {
-                            cb(err);
-                        } else {
-                            cb();
-                        }
-                    });
+                    pipeProcClient.reclaimProc(myProc.name)
+                    .then(function() {
+                        cb();
+                    })
+                    .catch(cb);
                 } else {
                     cb();
                 }

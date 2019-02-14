@@ -11,7 +11,7 @@ describe("using range", function() {
     beforeEach(function(done) {
         client = PipeProc();
 
-        (<Promise<string>>client.spawn({memory: true, workers: 0, namespace: uuid()})).then(function() {
+        client.spawn({memory: true, workers: 0, namespace: uuid()}).then(function() {
             commitSomeLogs(client).then(function(logs) {
                 testLogIds = logs;
                 done();
@@ -23,44 +23,37 @@ describe("using range", function() {
         });
     });
 
-    afterEach(function(done) {
+    afterEach(function() {
         if (client.pipeProcNode) {
-            client.shutdown(function(err) {
-                if (err) return done.fail(err);
-                done();
-            });
+            return client.shutdown();
         } else {
-            done();
+            return Promise.resolve();
         }
     });
 
     it("should get the whole topic if no start and end are provided", function(done) {
-        client.range("my_topic", {}, function(err, logs) {
-            expect(err).toBeNull();
+        client.range("my_topic").then(function(logs) {
             expect(logs).toBeArrayOfSize(3);
             done();
         });
     });
 
     it("should honor the limit option", function(done) {
-        client.range("my_topic", {limit: 1}, function(err, logs) {
-            expect(err).toBeNull();
+        client.range("my_topic", {limit: 1}).then(function(logs) {
             expect(logs).toBeArrayOfSize(1);
             done();
         });
     });
 
     it("should return the whole topic if limit is -1", function(done) {
-        client.range("my_topic", {limit: -1}, function(err, logs) {
-            expect(err).toBeNull();
+        client.range("my_topic", {limit: -1}).then(function(logs) {
             expect(logs).toBeArrayOfSize(3);
             done();
         });
     });
 
     it("should honor the start option", function(done) {
-        client.range("my_topic", {start: testLogIds[1]}, function(err, logs) {
-            expect(err).toBeNull();
+        client.range("my_topic", {start: testLogIds[1]}).then(function(logs) {
             expect(logs).toBeArrayOfSize(2);
             expect(logs[0].id).toEqual(testLogIds[1]);
             done();
@@ -68,8 +61,7 @@ describe("using range", function() {
     });
 
     it("should honor the end option", function(done) {
-        client.range("my_topic", {end: testLogIds[1]}, function(err, logs) {
-            expect(err).toBeNull();
+        client.range("my_topic", {end: testLogIds[1]}).then(function(logs) {
             expect(logs).toBeArrayOfSize(2);
             expect(logs[1].id).toEqual(testLogIds[1]);
             done();
@@ -77,8 +69,7 @@ describe("using range", function() {
     });
 
     it("should honor the start and end option", function(done) {
-        client.range("my_topic", {start: testLogIds[1], end: testLogIds[2]}, function(err, logs) {
-            expect(err).toBeNull();
+        client.range("my_topic", {start: testLogIds[1], end: testLogIds[2]}).then(function(logs) {
             expect(logs).toBeArrayOfSize(2);
             expect(logs[0].id).toEqual(testLogIds[1]);
             expect(logs[1].id).toEqual(testLogIds[2]);
@@ -91,8 +82,7 @@ describe("using range", function() {
             start: testLogIds[0],
             end: testLogIds[2],
             exclusive: true
-        }, function(err, logs) {
-            expect(err).toBeNull();
+        }).then(function(logs) {
             expect(logs).toBeArrayOfSize(1);
             expect(logs[0].id).toEqual(testLogIds[1]);
             done();
@@ -102,8 +92,7 @@ describe("using range", function() {
     it("should accept a timestamp only", function(done) {
         client.range("my_topic", {
             start: testLogIds[0].split("-")[0]
-        }, function(err, logs) {
-            expect(err).toBeNull();
+        }).then(function(logs) {
             expect(logs).toBeArrayOfSize(3);
             done();
         });
@@ -112,8 +101,7 @@ describe("using range", function() {
     it("should accept a sequenceNumber only", function(done) {
         client.range("my_topic", {
             start: `:${testLogIds[2].split("-")[1]}`
-        }, function(err, logs) {
-            expect(err).toBeNull();
+        }).then(function(logs) {
             expect(logs).toBeArrayOfSize(1);
             done();
         });
@@ -122,7 +110,7 @@ describe("using range", function() {
     it("should return an error if the sequenceNumber(tone id) does not exist", function(done) {
         client.range("my_topic", {
             start: ":123"
-        }, function(err, _logs) {
+        }).catch(function(err) {
             expect(err).toBeInstanceOf(Error);
             expect(err.message).toEqual("invalid_tone_id_search");
             done();
@@ -132,7 +120,7 @@ describe("using range", function() {
     it("should return an error if the start option is invalid", function(done) {
         client.range("my_topic", {
             start: "invalid"
-        }, function(err, _logs) {
+        }).catch(function(err) {
             expect(err).toBeInstanceOf(Error);
             expect(err.message).toEqual("invalid_range_offset");
             done();
@@ -142,7 +130,7 @@ describe("using range", function() {
     it("should return an error if the end option is invalid", function(done) {
         client.range("my_topic", {
             end: "invalid"
-        }, function(err, _logs) {
+        }).catch(function(err) {
             expect(err).toBeInstanceOf(Error);
             expect(err.message).toEqual("invalid_range_offset");
             done();
@@ -153,8 +141,7 @@ describe("using range", function() {
         client.range("my_topic", {
             start: testLogIds[1],
             end: testLogIds[0]
-        }, function(err, logs) {
-            expect(err).toBeNull();
+        }).then(function(logs) {
             expect(logs).toBeArrayOfSize(0);
             done();
         });
@@ -163,7 +150,7 @@ describe("using range", function() {
 });
 
 function commitSomeLogs(client) {
-    return (<Promise<string[]>>client.commit([{
+    return client.commit([{
         topic: "my_topic",
         body: {
             hello: 1
@@ -178,5 +165,5 @@ function commitSomeLogs(client) {
         body: {
             hello: 1
         }
-    }]));
+    }]);
 }

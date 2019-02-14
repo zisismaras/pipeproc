@@ -10,34 +10,31 @@ describe("committing logs", function() {
     beforeEach(function(done) {
         client = PipeProc();
 
-        (<Promise<string>>client.spawn({memory: true, workers: 0, namespace: uuid()})).then(function() {
+        client.spawn({memory: true, workers: 0, namespace: uuid()}).then(function() {
             done();
         }).catch(function(err) {
             done.fail(err);
         });
     });
 
-    afterEach(function(done) {
+    afterEach(function() {
         if (client.pipeProcNode) {
-            client.shutdown(function(err) {
-                if (err) return done.fail(err);
-                done();
-            });
+            return client.shutdown();
         } else {
-            done();
+            return Promise.resolve();
         }
     });
 
     it("should commit a simple log and return a logId with sequenceNumber 0 and a correct timestamp", function(done) {
-        (<Promise<string>>client.commit({
+        client.commit({
             topic: "my_topic",
             body: {
                 hello: 1
             }
-        })).then(function(logId) {
+        }).then(function(logId) {
             expect(logId).toBeString();
-            expect(logId.split("-")[1]).toEqual("0");
-            expect(parseInt(logId.split("-")[0])).toBeLessThanOrEqual(Date.now());
+            expect((<string>logId).split("-")[1]).toEqual("0");
+            expect(parseInt((<string>logId).split("-")[0])).toBeLessThanOrEqual(Date.now());
             done();
         }).catch(function(err) {
             done.fail(err);
@@ -45,7 +42,7 @@ describe("committing logs", function() {
     });
 
     it("should have the sequence number increasing incrementally when multiple logs are committed", function(done) {
-        (<Promise<string[]>>client.commit([{
+        client.commit([{
             topic: "my_topic",
             body: {
                 hello: 1
@@ -55,7 +52,7 @@ describe("committing logs", function() {
             body: {
                 hello: 2
             }
-        }])).then(function(logIds) {
+        }]).then(function(logIds) {
             expect(logIds).toBeArrayOfSize(2);
             expect(logIds[0].split("-")[1]).toEqual("0");
             expect(logIds[1].split("-")[1]).toEqual("1");
@@ -66,7 +63,7 @@ describe("committing logs", function() {
     });
 
     it("should have the same and correct timestamps when multiple logs are committed", function(done) {
-        (<Promise<string[]>>client.commit([{
+        client.commit([{
             topic: "my_topic",
             body: {
                 hello: 1
@@ -76,7 +73,7 @@ describe("committing logs", function() {
             body: {
                 hello: 2
             }
-        }])).then(function(logIds) {
+        }]).then(function(logIds) {
             expect(logIds).toBeArrayOfSize(2);
             const ts1 = parseInt(logIds[0].split("-")[0]);
             const ts2 = parseInt(logIds[1].split("-")[0]);
@@ -90,7 +87,7 @@ describe("committing logs", function() {
     });
 
     it("should have sequenceNumbers begin at zero if the 2 logs are committed to different topics", function(done) {
-        (<Promise<string[]>>client.commit([{
+        client.commit([{
             topic: "my_topic",
             body: {
                 hello: 1
@@ -100,7 +97,7 @@ describe("committing logs", function() {
             body: {
                 hello: 2
             }
-        }])).then(function(logIds) {
+        }]).then(function(logIds) {
             expect(logIds).toBeArrayOfSize(2);
             expect(logIds[0].split("-")[1]).toEqual("0");
             expect(logIds[1].split("-")[1]).toEqual("0");
@@ -111,12 +108,12 @@ describe("committing logs", function() {
     });
 
     it("should return an error if the topic name is invalid", function(done) {
-        (<Promise<string>>client.commit({
+        client.commit({
             topic: "an invalid topic",
             body: {
                 hello: 1
             }
-        })).then(function(logId) {
+        }).then(function(logId) {
             done.fail("it should not accept invalid topic names");
         }).catch(function(err) {
             expect(err).toBeInstanceOf(Error);
@@ -127,10 +124,10 @@ describe("committing logs", function() {
 
     it("should return an error if the log body is not an object", function(done) {
         //@ts-ignore
-        (<Promise<string>>client.commit({
+        client.commit({
             topic: "my_topic",
             body: 123
-        })).then(function(logId) {
+        }).then(function(logId) {
             done.fail("it should not accept invalid log bodies");
         }).catch(function(err) {
             expect(err).toBeInstanceOf(Error);
@@ -141,9 +138,9 @@ describe("committing logs", function() {
 
     it("should return an error if the log body is missing", function(done) {
         //@ts-ignore
-        (<Promise<string>>client.commit({
+        client.commit({
             topic: "my_topic"
-        })).then(function(logId) {
+        }).then(function(logId) {
             done.fail("it should not accept invalid log bodies");
         }).catch(function(err) {
             expect(err).toBeInstanceOf(Error);
@@ -154,10 +151,10 @@ describe("committing logs", function() {
 
     it("should return an error if the log body is null", function(done) {
         //@ts-ignore
-        (<Promise<string>>client.commit({
+        client.commit({
             topic: "my_topic",
             body: null
-        })).then(function(logId) {
+        }).then(function(logId) {
             done.fail("it should not accept invalid log bodies");
         }).catch(function(err) {
             expect(err).toBeInstanceOf(Error);
