@@ -37,6 +37,7 @@
 - [LiveProcs](#liveprocs)
   - [liveProc signature](#liveproc-signature)
   - [liveProc example](#liveproc-example)
+- [Waiting for procs to complete](#waiting-for-procs-to-complete)
 - [GC](#gc)
   - [Caveats/problems](#caveatsproblems)
 - [Typings](#typings)
@@ -577,6 +578,22 @@ interface ILiveProc {
     cancel: () => Promise<void>;
 }
 ```
+
+## Waiting for procs to complete
+
+When you have multiple systemProcs and/or liveProcs running it is sometimes needed to know when all logs in their topics have been acked.  
+For example when we need to shutdown and exit the application:  
+
+```javascript
+pipeProcClient.waitForProcs().then(function() {
+  pipeProcClient.shutdown().then(function() {
+    process.exit(0);
+  });
+});
+```
+
+`waitForProcs()` can take a proc name or an array of proc names and it will wait only for those to complete.  
+If nothing is passed then it will wait for every active proc.
 
 ## GC
 

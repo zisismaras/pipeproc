@@ -358,6 +358,24 @@ export function reclaimProc(
     }
 }
 
+export function waitForProcs(
+    client: IPipeProcClient,
+    procFilter: string[],
+    callback: (
+        err?: Error | null
+    ) => void
+): void {
+    if (client.pipeProcNode) {
+        const msg = prepareMessage({type: "wait_for_procs", data: {procs: procFilter}});
+        client.messageMap[msg.msgKey] = function() {
+            callback();
+        };
+        sendMessageToNode(client, msg);
+    } else {
+        callback(new Error("no_active_node"));
+    }
+}
+
 function areValidTopics(commitLog: ICommitLog | ICommitLog[]): boolean {
     if (Array.isArray(commitLog)) {
         return commitLog.filter(l => {

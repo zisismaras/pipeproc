@@ -11,7 +11,8 @@ import {
     destroyProc,
     disableProc,
     resumeProc,
-    reclaimProc
+    reclaimProc,
+    waitForProcs
 } from "./actions";
 import {
     createLiveProc,
@@ -146,6 +147,9 @@ export interface IPipeProcClient {
             count?: number
         }
     ): ILiveProc;
+    waitForProcs(
+        procs?: string | string[]
+    ): Promise<void>;
 }
 
 //tslint:disable function-name
@@ -533,6 +537,25 @@ export function PipeProc(): IPipeProcClient {
         },
         liveProc: function(options) {
             return createLiveProc(pipeProcClient, options);
+        },
+        waitForProcs: function(procs) {
+            var procFilter: string[];
+            if (Array.isArray(procs)) {
+                procFilter = procs;
+            } else if (typeof procs === "string") {
+                procFilter = [procs];
+            } else {
+                procFilter = [];
+            }
+            return new Promise(function(resolve, reject) {
+                waitForProcs(pipeProcClient, procFilter, function(err) {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve();
+                    }
+                });
+            });
         }
     };
 

@@ -227,6 +227,13 @@ export interface IPipeProcRegisterSystemProcsMessage extends IPipeProcMessage {
     };
 }
 
+export interface IPipeProcWaitForProcsMessage extends IPipeProcMessage {
+    type: "wait_for_procs";
+    data: {
+        procs: string[];
+    };
+}
+
 export interface IPipeProcRegisterSystemProcsMessageReply extends IPipeProcMessage {
     type: "register_system_proc_ok" | "register_system_proc_error";
     errStatus?: string;

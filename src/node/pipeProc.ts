@@ -18,6 +18,7 @@ import {
     IPipeProcResumeProcMessage,
     IPipeProcReclaimProcMessage,
     IPipeProcSystemProcMessage,
+    IPipeProcWaitForProcsMessage,
 
     IPipeProcLogMessageReply,
     IPipeProcProcMessageReply,
@@ -47,6 +48,7 @@ import {IWriteBuffer, startWriteBuffer} from "./writeBuffer";
 import {disableProc, resumeProc} from "./resumeDisableProc";
 import {reclaimProc} from "./reclaimProc";
 import {collect} from "./gc/collect";
+import {waitForProcs} from "./waitForProcs";
 
 const d = debug("pipeproc:node");
 
@@ -162,7 +164,7 @@ registerMessage<IPipeProcMessage["data"], IPipeProcMessage["data"]>(messageRegis
         callback
     ) {
         d("shutting down...");
-        runShutdownHooks(db, systemState, function(err) {
+        runShutdownHooks(db, systemState, activeWorkers, function(err) {
             if (err) {
                 callback((err && err.message) || "uknown_error");
                 process.exit(1);
@@ -170,6 +172,22 @@ registerMessage<IPipeProcMessage["data"], IPipeProcMessage["data"]>(messageRegis
                 callback();
                 process.exit(0);
             }
+        });
+    }
+});
+
+registerMessage<IPipeProcWaitForProcsMessage["data"], IPipeProcMessage["data"]>(messageRegistry, {
+    messageType: "wait_for_procs",
+    replySuccess: "procs_completed",
+    replyError: "procs_completed_error",
+    writeOp: false,
+    listener: function(
+        data,
+        callback
+    ) {
+        d("waiting for procs...");
+        waitForProcs(activeTopics, activeProcs, data.procs, function() {
+            callback();
         });
     }
 });
