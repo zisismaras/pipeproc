@@ -65,7 +65,15 @@
         "no-invalid-this": false,
         "no-import-side-effect": false,
         "no-http-string": false,
-        "no-submodule-imports": false
+        "no-submodule-imports": false,
+        "no-unsafe-any": false,
+        "strict-boolean-expressions": false,
+        "no-void-expression": false,
+        "no-string-based-set-timeout": false,
+        "promise-function-async": false,
+        "no-floating-promises": false,
+        "no-string-based-set-immediate": false,
+        "match-default-export-name": false
     },
     "jsRules": {
         "max-line-length": {

@@ -27,7 +27,7 @@ export function commitLog(
         } else if (
             typeof commit === "string" || (Array.isArray(commit) && commit.length > 0)
         ) {
-            callback(null, <string | string[]>commit);
+            callback(null, commit);
         } else {
             callback();
         }
