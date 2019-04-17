@@ -51,7 +51,7 @@ export function createLiveProc(
             const strategy = new ExponentialStrategy({
                 randomisationFactor: 0.5,
                 initialDelay: 10,
-                maxDelay: 10000,
+                maxDelay: 3000,
                 factor: 2
             });
             forever(function(next) {
