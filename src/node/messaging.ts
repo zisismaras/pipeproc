@@ -4,9 +4,11 @@ import {
 } from "../common/messages";
 import {IWriteBuffer} from "./writeBuffer";
 import {IWorker} from "./workerManager";
-import {IPC} from "node-ipc";
-import debug from "debug";
 import {tmpdir} from "os";
+
+//@ts-ignore
+import {Server} from "@crussell52/socket-ipc";
+import {xpipe} from "../common/xpipe";
 
 export interface IMessageRegistry {
     [key: string]: {
@@ -55,54 +57,46 @@ export function initializeMessages(
     registry: IMessageRegistry,
     namespace: string
 ) {
-    const ipc = new IPC();
-    ipc.config.socketRoot = `${tmpdir()}/`;
-    ipc.config.appspace = "pipeproc.";
-    ipc.config.id = namespace;
-    ipc.config.retry = 100;
-    ipc.config.silent = false;
-    ipc.config.logger = debug("pipeproc:ipc:node");
-    ipc.serve(function() {
-        ipc.server.on("message", function(msg: IPipeProcMessage, socket) {
-            if (!registry[msg.type]) return;
-            if (registry[msg.type].writeOp) {
-                writeBuffer.push(function(cb) {
-                    registry[msg.type].listener(msg.data, function(errStatus, reply) {
-                        if (errStatus) {
-                            ipc.server.emit(socket, "message", prepareMessage({
-                                type: registry[msg.type].replyError,
-                                msgKey: msg.msgKey,
-                                errStatus: errStatus
-                            }));
-                            setImmediate(cb);
-                        } else {
-                            ipc.server.emit(socket, "message", prepareMessage({
-                                type: registry[msg.type].replySuccess,
-                                msgKey: msg.msgKey,
-                                data: reply
-                            }));
-                            setImmediate(cb);
-                        }
-                    });
-                });
-            } else {
+    const server = new Server({socketFile: xpipe(`${tmpdir()}/pipeproc.${namespace || "default"}`)});
+    server.on("message", function(msg: IPipeProcMessage, _topic: string, clientId: string) {
+        if (!registry[msg.type]) return;
+        if (registry[msg.type].writeOp) {
+            writeBuffer.push(function(cb) {
                 registry[msg.type].listener(msg.data, function(errStatus, reply) {
                     if (errStatus) {
-                        ipc.server.emit(socket, "message", prepareMessage({
+                        server.send("aTopic", prepareMessage({
                             type: registry[msg.type].replyError,
                             msgKey: msg.msgKey,
                             errStatus: errStatus
-                        }));
+                        }), clientId);
+                        setImmediate(cb);
                     } else {
-                        ipc.server.emit(socket, "message", prepareMessage({
+                        server.send("aTopic", prepareMessage({
                             type: registry[msg.type].replySuccess,
                             msgKey: msg.msgKey,
                             data: reply
-                        }));
+                        }), clientId);
+                        setImmediate(cb);
                     }
                 });
-            }
-        });
+            });
+        } else {
+            registry[msg.type].listener(msg.data, function(errStatus, reply) {
+                if (errStatus) {
+                    server.send("aTopic", prepareMessage({
+                        type: registry[msg.type].replyError,
+                        msgKey: msg.msgKey,
+                        errStatus: errStatus
+                    }), clientId);
+                } else {
+                    server.send("aTopic", prepareMessage({
+                        type: registry[msg.type].replySuccess,
+                        msgKey: msg.msgKey,
+                        data: reply
+                    }), clientId);
+                }
+            });
+        }
     });
-    ipc.server.start();
+    server.listen();
 }
