@@ -56,7 +56,7 @@
     "typescript": "~3.3.0"
   },
   "dependencies": {
-    "@crussell52/socket-ipc": "^0.2.0",
+    "@crussell52/socket-ipc": "0.2.0",
     "@types/async": "2.0.49",
     "@types/backoff": "2.5.1",
     "@types/debug": "0.0.30",
