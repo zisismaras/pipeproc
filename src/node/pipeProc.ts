@@ -130,6 +130,7 @@ registerMessage<IPipeProcSystemInitMessage["data"], IPipeProcMessage["data"]>(me
                         callback((spawnErr && spawnErr.message) || "uknown_error");
                     } else {
                         if (data.options.gc) {
+                            d("gc is enabled");
                             const MIN_PRUNE_TIME = (data.options.gc &&
                                 (<{minPruneTime: number}>data.options.gc).minPruneTime) || 30000;
                             const GC_INTERVAL = (data.options.gc &&
@@ -140,11 +141,15 @@ registerMessage<IPipeProcSystemInitMessage["data"], IPipeProcMessage["data"]>(me
                                 d("gc will start running...");
                                 gcRunning = true;
                                 collect(db, activeTopics, activeProcs, {minPruneTime: MIN_PRUNE_TIME}, function(gcErr) {
-                                    d("gc error:", gcErr);
+                                    if (gcErr) {
+                                        d("gc error:", gcErr);
+                                    }
                                     gcRunning = false;
                                     d("gc ended");
                                 });
                             }, GC_INTERVAL);
+                        } else {
+                            d("gc is disabled");
                         }
                         callback();
                     }

@@ -153,7 +153,7 @@ export function PipeProc(): IPipeProcClient {
                     memory: (options && options.memory) || false,
                     location: (options && options.location) || "./pipeproc_data",
                     workers: workers,
-                    gc: (options && options.gc) || {}
+                    gc: (options && options.gc) || undefined
                 }, function(err, status) {
                     if (err) {
                         reject(err);
