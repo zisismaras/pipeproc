@@ -42,6 +42,7 @@ export function ackCommitLog(
         ) {
             myProc.lastAckedRange = myProc.lastClaimedRange;
             myProc.lastAckedAt = <number>lastAckedAt;
+            myProc.reclaims = 0;
             if (Array.isArray(log)) {
                 callback(null, [myProc.lastAckedRange, <string[]>commit]);
             } else {

@@ -6,6 +6,7 @@ import MemDOWN from "memdown";
 import {commitLog} from "../../src/node/commitLog";
 import {proc, IProc} from "../../src/node/proc";
 import {ack} from "../../src/node/ack";
+import {ackCommitLog} from "../../src/node/ackCommitLog";
 import {IActiveTopics} from "../../src/node/pipeProc";
 import {reclaimProc} from "../../src/node/reclaimProc";
 import {disableProc} from "../../src/node/resumeDisableProc";
@@ -191,12 +192,30 @@ describe("after an ack", function() {
         });
     });
 
-    it("should reset reclaims after a succesfull ack", function(done) {
-        ack(db, activeProcs, "my_proc_0", function(err) {
+    it("should reset reclaims after a successful ack", function(done) {
+        reclaimProc(db, activeProcs, "my_proc_0", function(err) {
             if (err) return done.fail(err);
-            const myProc = activeProcs.find(p => p.name === "my_proc_0");
-            expect(myProc.reclaims).toBe(0);
-            done();
+            ack(db, activeProcs, "my_proc_0", function(err2) {
+                if (err2) return done.fail(err2);
+                const myProc = activeProcs.find(p => p.name === "my_proc_0");
+                expect(myProc.reclaims).toBe(0);
+                done();
+            });
+        });
+    });
+
+    it("should reset reclaims after a successful ackCommit", function(done) {
+        reclaimProc(db, activeProcs, "my_proc_0", function(err) {
+            if (err) return done.fail(err);
+            ackCommitLog(db, activeTopics, activeProcs, "my_proc_0", {
+                topic: "my_topic_0",
+                body: "{\"myData\": 5}"
+            }, function(err2) {
+                if (err2) return done.fail(err2);
+                const myProc = activeProcs.find(p => p.name === "my_proc_0");
+                expect(myProc.reclaims).toBe(0);
+                done();
+            });
         });
     });
 });

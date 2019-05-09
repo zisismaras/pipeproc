@@ -23,6 +23,7 @@ export function ack(
         } else if (lastAckedAt) {
             myProc.lastAckedRange = myProc.lastClaimedRange;
             myProc.lastAckedAt = <number>lastAckedAt;
+            myProc.reclaims = 0;
             callback(null, myProc.lastAckedRange);
         } else {
             callback(new Error("ack_failed"));
