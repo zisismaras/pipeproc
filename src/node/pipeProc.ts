@@ -55,6 +55,7 @@ const d = debug("pipeproc:node");
 let db: LevelDOWN.LevelDown;
 
 let ipcNamespace: string;
+let ipcServer: {close: () => void};
 
 export interface IActiveTopics {
     [key: string]: {
@@ -154,28 +155,6 @@ registerMessage<IPipeProcSystemInitMessage["data"], IPipeProcMessage["data"]>(me
                         callback();
                     }
                 });
-            }
-        });
-    }
-});
-
-registerMessage<IPipeProcMessage["data"], IPipeProcMessage["data"]>(messageRegistry, {
-    messageType: "system_shutdown",
-    replySuccess: "system_closed",
-    replyError: "system_closed_error",
-    writeOp: true,
-    listener: function(
-        _data,
-        callback
-    ) {
-        d("shutting down...");
-        runShutdownHooks(db, systemState, activeWorkers, function(err) {
-            if (err) {
-                callback((err && err.message) || "uknown_error");
-                process.exit(1);
-            } else {
-                callback();
-                process.exit(0);
             }
         });
     }
@@ -453,12 +432,42 @@ const initIPCListener = function(e: IPipeProcInitIPCMessage) {
     if (e.type === "init_ipc") {
         ipcNamespace = e.data.namespace;
         process.removeListener("message", initIPCListener);
-        initializeMessages(writeBuffer, messageRegistry, ipcNamespace);
+        ipcServer = initializeMessages(writeBuffer, messageRegistry, ipcNamespace);
         if (process && typeof process.send === "function") {
             process.send(prepareMessage({type: "ipc_established", msgKey: e.msgKey}));
         }
     }
 };
 
+const shutdownListener = function(e: IPipeProcMessage) {
+    if (e.type === "system_shutdown") {
+        d("shutting down...");
+        //@ts-ignore
+        ipcServer.close();
+        process.removeListener("message", shutdownListener);
+        runShutdownHooks(db, systemState, activeWorkers, function(err) {
+            if (err) {
+                if (process && typeof process.send === "function") {
+                    process.send(prepareMessage({
+                        type: "system_closed_error",
+                        msgKey: e.msgKey,
+                        errStatus: (err && err.message) || "uknown_error"
+                    }));
+                }
+                process.exit(1);
+            } else {
+                if (process && typeof process.send === "function") {
+                    process.send(prepareMessage({
+                        type: "system_closed",
+                        msgKey: e.msgKey
+                    }));
+                }
+                process.exit(0);
+            }
+        });
+    }
+};
+
 process.on("message", initIPCListener);
+process.on("message", shutdownListener);
 startWriteBuffer(writeBuffer);

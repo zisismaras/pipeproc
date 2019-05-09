@@ -97,17 +97,23 @@ export function shutdown(
 ): void {
     if (client.pipeProcNode) {
         d("closing node...");
-        const msg = prepareMessage({type: "system_shutdown"});
-        client.messageMap[msg.msgKey] = function(e: IPipeProcMessage) {
+        //@ts-ignore
+        client.ipc.close();
+        const shutDownMessage = prepareMessage({type: "system_shutdown"});
+        const systemClosedListener = function(e: IPipeProcMessage) {
+            if (e.msgKey !== shutDownMessage.msgKey) return;
+            (<ChildProcess>client.pipeProcNode).removeListener("message", systemClosedListener);
+            delete client.pipeProcNode;
+            delete client.ipc;
             if (e.type === "system_closed") {
                 d("node closed");
-                delete client.pipeProcNode;
                 callback(null, "closed");
             } else if (e.type === "system_closed_error") {
                 callback(new Error(e.errStatus || "uknown_error"));
             }
         };
-        sendMessageToNode(client, msg);
+        (<ChildProcess>client.pipeProcNode).on("message", systemClosedListener);
+        (<ChildProcess>client.pipeProcNode).send(shutDownMessage);
     } else {
         return callback(new Error("no_active_node"));
     }

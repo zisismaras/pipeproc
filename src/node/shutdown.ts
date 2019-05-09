@@ -10,8 +10,13 @@ export function runShutdownHooks(
     activeWorkers.forEach(function(worker) {
         worker.process.kill("SIGTERM");
     });
-    db.close(function(err) {
+    if (db && typeof db.close === "function") {
+        db.close(function(err) {
+            systemState.active = false;
+            callback(err);
+        });
+    } else {
         systemState.active = false;
-        callback(err);
-    });
+        callback();
+    }
 }

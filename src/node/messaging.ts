@@ -104,4 +104,6 @@ export function initializeMessages(
         }
     });
     server.listen();
+
+    return server;
 }

@@ -97,7 +97,7 @@ describe("shutting down a node", function() {
 
     it("should be able to shutdown a node", function(done) {
         //spawn it first
-        client.spawn({memory: true, workers: 0, namespace: uuid()}).then(function() {
+        client.spawn({memory: true, workers: 1, namespace: uuid()}).then(function() {
             client.shutdown().then(function(status) {
                 expect(status).toEqual("closed");
                 done();
