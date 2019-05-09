@@ -42,6 +42,10 @@ export function spawn(
                 delete client.messageMap[message.msgKey];
             }
         });
+        const ipcd = debug("pipeproc:ipc:client");
+        ipcClient.on("error", function(err: Error) {
+            ipcd("client IPC error:", err);
+        });
         ipcClient.connect();
     };
     (<ChildProcess>client.pipeProcNode).on("message", ipcEstablishedListener);
@@ -73,6 +77,17 @@ export function connect(
             delete client.messageMap[message.msgKey];
         }
     });
+    if (options.isWorker) {
+        const ipcd = debug("pipeproc:ipc:worker");
+        ipcClient.on("error", function(err: Error) {
+            ipcd("client IPC error:", err);
+        });
+    } else {
+        const ipcd = debug("pipeproc:ipc:client");
+        ipcClient.on("error", function(err: Error) {
+            ipcd("client IPC error:", err);
+        });
+    }
     ipcClient.connect();
 }
 

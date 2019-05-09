@@ -1,3 +1,5 @@
+//based on https://github.com/nodexo/xpipe
+
 export function xpipe(path: string) {
     const prefix = getPrefix();
     if (prefix.endsWith("/") && path.startsWith("/")) {

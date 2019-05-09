@@ -1,4 +1,3 @@
-/// <reference types="../typings/node-ipc" />
 import {spawn, shutdown, connect} from "./process";
 import {
     commit,
