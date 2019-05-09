@@ -1,4 +1,3 @@
-/// <reference types="../typings/node-ipc" />
 import {spawn, shutdown, connect} from "./process";
 import {
     commit,
@@ -19,7 +18,6 @@ import {
     ILiveProc
 } from "./liveproc";
 import {IProc} from "../node/proc";
-import {IPC} from "node-ipc";
 import {ChildProcess} from "child_process";
 
 export interface ICommitLog {
@@ -30,7 +28,7 @@ export interface ICommitLog {
 export interface IPipeProcClient {
     namespace: string;
     pipeProcNode?: ChildProcess | {};
-    ipc?: IPC;
+    ipc?: object;
     messageMap: {
         //tslint:disable no-any
         [key: string]: (e: any) => void;
