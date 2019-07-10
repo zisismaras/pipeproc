@@ -5,11 +5,7 @@ import {
 import {IWriteBuffer} from "./writeBuffer";
 import {IWorker} from "./workerManager";
 import {tmpdir} from "os";
-import debug from "debug";
-
-//@ts-ignore
-import {Server} from "@crussell52/socket-ipc";
-import {xpipe} from "../common/xpipe";
+import zmq from "zeromq";
 
 export interface IMessageRegistry {
     [key: string]: {
@@ -58,29 +54,27 @@ export function initializeMessages(
     registry: IMessageRegistry,
     namespace: string
 ) {
-    const server = new Server({socketFile: xpipe(`${tmpdir()}/pipeproc.${namespace || "default"}`)});
-    const d = debug("pipeproc:ipc:node");
-    server.on("error", function(err: Error) {
-        d("node IPC error:", err);
-    });
-    server.on("message", function(msg: IPipeProcMessage, _topic: string, clientId: string) {
+    const sock = zmq.socket("router");
+    sock.bindSync(`ipc://${tmpdir()}/pipeproc.${namespace || "default"}`);
+    sock.on("message", function(identity, _del, rawMessage: Buffer) {
+        const msg: IPipeProcMessage = JSON.parse(rawMessage.toString());
         if (!registry[msg.type]) return;
         if (registry[msg.type].writeOp) {
             writeBuffer.push(function(cb) {
                 registry[msg.type].listener(msg.data, function(errStatus, reply) {
                     if (errStatus) {
-                        server.send("message", prepareMessage({
+                        sock.send([identity, "", JSON.stringify(prepareMessage({
                             type: registry[msg.type].replyError,
                             msgKey: msg.msgKey,
                             errStatus: errStatus
-                        }), clientId);
+                        }))]);
                         setImmediate(cb);
                     } else {
-                        server.send("message", prepareMessage({
+                        sock.send([identity, "", JSON.stringify(prepareMessage({
                             type: registry[msg.type].replySuccess,
                             msgKey: msg.msgKey,
                             data: reply
-                        }), clientId);
+                        }))]);
                         setImmediate(cb);
                     }
                 });
@@ -88,22 +82,21 @@ export function initializeMessages(
         } else {
             registry[msg.type].listener(msg.data, function(errStatus, reply) {
                 if (errStatus) {
-                    server.send("message", prepareMessage({
+                    sock.send(JSON.stringify(prepareMessage({
                         type: registry[msg.type].replyError,
                         msgKey: msg.msgKey,
                         errStatus: errStatus
-                    }), clientId);
+                    })));
                 } else {
-                    server.send("message", prepareMessage({
+                    sock.send(JSON.stringify(prepareMessage({
                         type: registry[msg.type].replySuccess,
                         msgKey: msg.msgKey,
                         data: reply
-                    }), clientId);
+                    })));
                 }
             });
         }
     });
-    server.listen();
 
-    return server;
+    return sock;
 }

@@ -3,9 +3,7 @@ import debug from "debug";
 import {prepareMessage, IPipeProcMessage, IPipeProcIPCEstablishedMessage} from "../common/messages";
 import {IPipeProcClient} from ".";
 import {tmpdir} from "os";
-//@ts-ignore
-import {Client} from "@crussell52/socket-ipc";
-import {xpipe} from "../common/xpipe";
+import zmq from "zeromq";
 
 const d = debug("pipeproc:client");
 
@@ -27,26 +25,19 @@ export function spawn(
         if (e.type !== "ipc_established" || e.msgKey !== initIPCMessage.msgKey) return;
         d("ipc established under namespace:", client.namespace);
         (<ChildProcess>client.pipeProcNode).removeListener("message", ipcEstablishedListener);
-        const ipcClient = new Client({socketFile: xpipe(`${tmpdir()}/pipeproc.${client.namespace || "default"}`)});
-        ipcClient.on("connect", function() {
-            d("connected to ipc channel");
-            client.ipc = ipcClient;
-            ipcClient.send("message",
-                prepareMessage({type: "system_init", data: {options: options}}));
-            callback(null, "spawned_and_connected");
-        });
+        const sock = zmq.socket("req");
+        sock.connect(`ipc://${tmpdir()}/pipeproc.${client.namespace || "default"}`);
         //messageMap listener init
-        ipcClient.on("message", function(message: IPipeProcMessage) {
+        sock.on("message", function(rawMessage: Buffer) {
+            const message: IPipeProcMessage = JSON.parse(rawMessage.toString());
             if (typeof client.messageMap[message.msgKey] === "function") {
                 client.messageMap[message.msgKey](message);
                 delete client.messageMap[message.msgKey];
             }
         });
-        const ipcd = debug("pipeproc:ipc:client");
-        ipcClient.on("error", function(err: Error) {
-            ipcd("client IPC error:", err);
-        });
-        ipcClient.connect();
+        client.ipc = sock;
+        sock.send(JSON.stringify(prepareMessage({type: "system_init", data: {options: options}})));
+        callback(null, "spawned_and_connected");
     };
     (<ChildProcess>client.pipeProcNode).on("message", ipcEstablishedListener);
     (<ChildProcess>client.pipeProcNode).send(initIPCMessage);
@@ -63,32 +54,20 @@ export function connect(
     } else if (!client.pipeProcNode) {
         client.pipeProcNode = {};
     }
-    const ipcClient = new Client({socketFile: xpipe(`${tmpdir()}/pipeproc.${client.namespace || "default"}`)});
-    ipcClient.on("connect", function() {
-        d("connected to ipc channel");
-        client.ipc = ipcClient;
-        ipcClient.send("message", prepareMessage({type: "connected", data: {}}));
-        callback(null, "connected");
-    });
+    const sock = zmq.socket("req");
+    sock.connect(`ipc://${tmpdir()}/pipeproc.${client.namespace || "default"}`);
     //messageMap listener init
-    ipcClient.on("message", function(message: IPipeProcMessage) {
+    sock.on("message", function(rawMessage: Buffer) {
+        const message: IPipeProcMessage = JSON.parse(rawMessage.toString());
+        console.log("CLIENT", message);
         if (typeof client.messageMap[message.msgKey] === "function") {
             client.messageMap[message.msgKey](message);
             delete client.messageMap[message.msgKey];
         }
     });
-    if (options.isWorker) {
-        const ipcd = debug("pipeproc:ipc:worker");
-        ipcClient.on("error", function(err: Error) {
-            ipcd("client IPC error:", err);
-        });
-    } else {
-        const ipcd = debug("pipeproc:ipc:client");
-        ipcClient.on("error", function(err: Error) {
-            ipcd("client IPC error:", err);
-        });
-    }
-    ipcClient.connect();
+    client.ipc = sock;
+    sock.send(JSON.stringify(prepareMessage({type: "connected", data: {}})));
+    callback(null, "connected");
 }
 
 export function shutdown(
@@ -98,7 +77,7 @@ export function shutdown(
     if (client.pipeProcNode) {
         d("closing node...");
         //@ts-ignore
-        client.ipc.close();
+        client.ipc.disconnect(`ipc://${tmpdir()}/pipeproc.${client.namespace || "default"}`);
         const shutDownMessage = prepareMessage({type: "system_shutdown"});
         const systemClosedListener = function(e: IPipeProcMessage) {
             if (e.msgKey !== shutDownMessage.msgKey) return;
@@ -137,6 +116,6 @@ export function sendMessageToNode(
         return;
     }
     //@ts-ignore
-    client.ipc.send("message", msg);
+    client.ipc.send(JSON.stringify(msg));
     if (typeof callback === "function") callback();
 }

@@ -49,13 +49,14 @@ import {disableProc, resumeProc} from "./resumeDisableProc";
 import {reclaimProc} from "./reclaimProc";
 import {collect} from "./gc/collect";
 import {waitForProcs} from "./waitForProcs";
+import {Socket} from "zeromq";
 
 const d = debug("pipeproc:node");
 
 let db: LevelDOWN.LevelDown;
 
 let ipcNamespace: string;
-let ipcServer: {close: () => void};
+let ipcServer: Socket;
 
 export interface IActiveTopics {
     [key: string]: {
@@ -442,7 +443,6 @@ const initIPCListener = function(e: IPipeProcInitIPCMessage) {
 const shutdownListener = function(e: IPipeProcMessage) {
     if (e.type === "system_shutdown") {
         d("shutting down...");
-        //@ts-ignore
         ipcServer.close();
         process.removeListener("message", shutdownListener);
         runShutdownHooks(db, systemState, activeWorkers, function(err) {
