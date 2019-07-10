@@ -82,17 +82,17 @@ export function initializeMessages(
         } else {
             registry[msg.type].listener(msg.data, function(errStatus, reply) {
                 if (errStatus) {
-                    sock.send(JSON.stringify(prepareMessage({
+                    sock.send([identity, "", JSON.stringify(prepareMessage({
                         type: registry[msg.type].replyError,
                         msgKey: msg.msgKey,
                         errStatus: errStatus
-                    })));
+                    }))]);
                 } else {
-                    sock.send(JSON.stringify(prepareMessage({
+                    sock.send([identity, "", JSON.stringify(prepareMessage({
                         type: registry[msg.type].replySuccess,
                         msgKey: msg.msgKey,
                         data: reply
-                    })));
+                    }))]);
                 }
             });
         }

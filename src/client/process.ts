@@ -25,10 +25,11 @@ export function spawn(
         if (e.type !== "ipc_established" || e.msgKey !== initIPCMessage.msgKey) return;
         d("ipc established under namespace:", client.namespace);
         (<ChildProcess>client.pipeProcNode).removeListener("message", ipcEstablishedListener);
-        const sock = zmq.socket("req");
+        const sock = zmq.socket("dealer");
+        sock.identity = Buffer.from(String(process.pid));
         sock.connect(`ipc://${tmpdir()}/pipeproc.${client.namespace || "default"}`);
         //messageMap listener init
-        sock.on("message", function(rawMessage: Buffer) {
+        sock.on("message", function(_del, rawMessage: Buffer) {
             const message: IPipeProcMessage = JSON.parse(rawMessage.toString());
             if (typeof client.messageMap[message.msgKey] === "function") {
                 client.messageMap[message.msgKey](message);
@@ -36,7 +37,7 @@ export function spawn(
             }
         });
         client.ipc = sock;
-        sock.send(JSON.stringify(prepareMessage({type: "system_init", data: {options: options}})));
+        sock.send(["", JSON.stringify(prepareMessage({type: "system_init", data: {options: options}}))]);
         callback(null, "spawned_and_connected");
     };
     (<ChildProcess>client.pipeProcNode).on("message", ipcEstablishedListener);
@@ -54,19 +55,19 @@ export function connect(
     } else if (!client.pipeProcNode) {
         client.pipeProcNode = {};
     }
-    const sock = zmq.socket("req");
+    const sock = zmq.socket("dealer");
+    sock.identity = Buffer.from(String(process.pid));
     sock.connect(`ipc://${tmpdir()}/pipeproc.${client.namespace || "default"}`);
     //messageMap listener init
-    sock.on("message", function(rawMessage: Buffer) {
+    sock.on("message", function(_del, rawMessage: Buffer) {
         const message: IPipeProcMessage = JSON.parse(rawMessage.toString());
-        console.log("CLIENT", message);
         if (typeof client.messageMap[message.msgKey] === "function") {
             client.messageMap[message.msgKey](message);
             delete client.messageMap[message.msgKey];
         }
     });
     client.ipc = sock;
-    sock.send(JSON.stringify(prepareMessage({type: "connected", data: {}})));
+    sock.send(["", JSON.stringify(prepareMessage({type: "connected", data: {}}))]);
     callback(null, "connected");
 }
 
@@ -76,8 +77,9 @@ export function shutdown(
 ): void {
     if (client.pipeProcNode) {
         d("closing node...");
-        //@ts-ignore
-        client.ipc.disconnect(`ipc://${tmpdir()}/pipeproc.${client.namespace || "default"}`);
+        if (client.ipc) {
+            client.ipc.close();
+        }
         const shutDownMessage = prepareMessage({type: "system_shutdown"});
         const systemClosedListener = function(e: IPipeProcMessage) {
             if (e.msgKey !== shutDownMessage.msgKey) return;
@@ -116,6 +118,6 @@ export function sendMessageToNode(
         return;
     }
     //@ts-ignore
-    client.ipc.send(JSON.stringify(msg));
+    client.ipc.send(["", JSON.stringify(msg)]);
     if (typeof callback === "function") callback();
 }

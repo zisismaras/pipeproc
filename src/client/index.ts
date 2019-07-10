@@ -19,6 +19,7 @@ import {
 } from "./liveproc";
 import {IProc} from "../node/proc";
 import {ChildProcess} from "child_process";
+import {Socket} from "zeromq";
 
 export interface ICommitLog {
     topic: string;
@@ -28,7 +29,7 @@ export interface ICommitLog {
 export interface IPipeProcClient {
     namespace: string;
     pipeProcNode?: ChildProcess | {};
-    ipc?: object;
+    ipc?: Socket;
     messageMap: {
         //tslint:disable no-any
         [key: string]: (e: any) => void;
