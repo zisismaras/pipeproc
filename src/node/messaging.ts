@@ -52,10 +52,18 @@ export function registerMessage<T, U>(registry: IMessageRegistry, newMessage: me
 export function initializeMessages(
     writeBuffer: IWriteBuffer,
     registry: IMessageRegistry,
-    namespace: string
+    namespace?: string,
+    tcpSettings?: {
+        host: string,
+        port: number
+    }
 ) {
     const sock = zmq.socket("router");
-    sock.bindSync(`ipc://${tmpdir()}/pipeproc.${namespace || "default"}`);
+    if (namespace) {
+        sock.bindSync(`ipc://${tmpdir()}/pipeproc.${namespace}`);
+    } else if (tcpSettings) {
+        sock.bindSync(`tcp://${tcpSettings.host}:${tcpSettings.port}`);
+    }
     sock.on("message", function(identity, _del, rawMessage: Buffer) {
         const msg: IPipeProcMessage = JSON.parse(rawMessage.toString());
         if (!registry[msg.type]) return;

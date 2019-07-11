@@ -44,8 +44,13 @@ const processorMap: IProcessorMap = {};
 
 process.on("message", function(e: IPipeProcWorkerInitMessage) {
     if (e.type === "worker_init") {
-        pipeProcClient.connect({isWorker: true, namespace: e.data.namespace})
-        .then(function(status) {
+        let connectionPromise;
+        if (e.data.tcpSettings) {
+            connectionPromise = pipeProcClient.connect({isWorker: true, tcp: e.data.tcpSettings});
+        } else {
+            connectionPromise = pipeProcClient.connect({isWorker: true, namespace: e.data.namespace});
+        }
+        connectionPromise.then(function(status) {
             sendMessageToNode(prepareMessage({
                 type: "connected",
                 msgKey: e.msgKey,

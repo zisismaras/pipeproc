@@ -22,7 +22,7 @@
     "multi process"
   ],
   "scripts": {
-    "test": "(tsc || echo \"compiled\") && jest",
+    "test": "jest --forceExit",
     "prepublishOnly": "tsc --build --clean && tsc --build && rm -rf ./lib/typings && cp -r ./src/typings ./lib/typings"
   },
   "jest": {
@@ -38,6 +38,10 @@
       "jsx",
       "json",
       "node"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/__tests__/utils/"
     ]
   },
   "devDependencies": {

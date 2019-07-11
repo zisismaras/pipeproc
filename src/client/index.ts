@@ -27,7 +27,6 @@ export interface ICommitLog {
 }
 
 export interface IPipeProcClient {
-    namespace: string;
     pipeProcNode?: ChildProcess | {};
     ipc?: Socket;
     messageMap: {
@@ -41,6 +40,10 @@ export interface IPipeProcClient {
     spawn(
         options?: {
             namespace?: string,
+            tcp?: {
+                host: string,
+                port: number
+            },
             memory?: boolean,
             location?: string,
             workers?: number,
@@ -50,6 +53,10 @@ export interface IPipeProcClient {
     connect(
         options?: {
             namespace?: string,
+            tcp?: {
+                host: string,
+                port: number
+            },
             isWorker?: boolean
         }
     ): Promise<string>;
@@ -137,11 +144,19 @@ export interface IPipeProcClient {
 export function PipeProc(): IPipeProcClient {
 //tslint:enable function-name
     const pipeProcClient: IPipeProcClient = {
-        namespace: "default",
         messageMap: {},
         spawn: function(options) {
+            let namespace = "default";
             if (options && options.namespace && typeof options.namespace === "string") {
-                this.namespace = options.namespace;
+                namespace = options.namespace;
+            }
+            if (options && options.tcp) {
+                if (!options.tcp.host || !options.tcp.port) {
+                    return Promise.reject(new Error("tcp connection needs a host and a port"));
+                }
+                if (options.namespace) {
+                    return Promise.reject(new Error("cannot use both an ipc namespace and a tcp connection"));
+                }
             }
             let workers: number;
             if (options && typeof options.workers === "number" && options.workers >= 0) {
@@ -154,6 +169,8 @@ export function PipeProc(): IPipeProcClient {
                     memory: (options && options.memory) || false,
                     location: (options && options.location) || "./pipeproc_data",
                     workers: workers,
+                    namespace: namespace,
+                    tcp: (options && options.tcp) || false,
                     gc: (options && options.gc) || undefined
                 }, function(err, status) {
                     if (err) {
@@ -165,12 +182,23 @@ export function PipeProc(): IPipeProcClient {
             });
         },
         connect: function(options) {
+            let namespace = "default";
             if (options && options.namespace && typeof options.namespace === "string") {
-                this.namespace = options.namespace;
+                namespace = options.namespace;
+            }
+            if (options && options.tcp) {
+                if (!options.tcp.host || !options.tcp.port) {
+                    return Promise.reject(new Error("tcp connection needs a host and a port"));
+                }
+                if (options.namespace) {
+                    return Promise.reject(new Error("cannot use both an ipc namespace and a tcp connection"));
+                }
             }
             return new Promise(function(resolve, reject) {
                 connect(pipeProcClient, {
-                    isWorker: (options && options.isWorker) || false
+                    isWorker: (options && options.isWorker) || false,
+                    namespace: namespace,
+                    tcp: (options && options.tcp) || false
                 }, function(err, status) {
                     if (err) {
                         reject(err);

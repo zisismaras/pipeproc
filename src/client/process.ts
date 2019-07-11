@@ -13,6 +13,11 @@ export function spawn(
         memory: boolean,
         location: string,
         workers: number,
+        namespace: string,
+        tcp: {
+            host: string,
+            port: number
+        } | false,
         gc?: {minPruneTime?: number, interval?: number} | boolean
     },
     callback: (err?: Error | null, status?: string) => void
@@ -20,14 +25,25 @@ export function spawn(
     if (client.pipeProcNode) return callback(null, "node_already_active");
     d("spawning node...");
     client.pipeProcNode = forkProcess(`${__dirname}/../node/pipeProc`);
-    const initIPCMessage = prepareMessage({type: "init_ipc", data: {namespace: client.namespace}});
+    let initData;
+    if (options.tcp) {
+        initData = {tcp: options.tcp};
+    } else {
+        initData = {namespace: options.namespace};
+    }
+    const initIPCMessage = prepareMessage({type: "init_ipc", data: initData});
     const ipcEstablishedListener = function(e: IPipeProcIPCEstablishedMessage) {
         if (e.type !== "ipc_established" || e.msgKey !== initIPCMessage.msgKey) return;
-        d("ipc established under namespace:", client.namespace);
         (<ChildProcess>client.pipeProcNode).removeListener("message", ipcEstablishedListener);
         const sock = zmq.socket("dealer");
         sock.identity = Buffer.from(String(process.pid));
-        sock.connect(`ipc://${tmpdir()}/pipeproc.${client.namespace || "default"}`);
+        if (options.tcp) {
+            sock.connect(`tcp://${options.tcp.host}:${options.tcp.port}`);
+            d("tcp connection established on host:", options.tcp.host, "and port:", options.tcp.port);
+        } else {
+            sock.connect(`ipc://${tmpdir()}/pipeproc.${options.namespace}`);
+            d("ipc established under namespace:", options.namespace);
+        }
         //messageMap listener init
         sock.on("message", function(_del, rawMessage: Buffer) {
             const message: IPipeProcMessage = JSON.parse(rawMessage.toString());
@@ -46,7 +62,14 @@ export function spawn(
 
 export function connect(
     client: IPipeProcClient,
-    options: {isWorker: boolean},
+    options: {
+        isWorker: boolean,
+        namespace: string,
+        tcp: {
+            host: string,
+            port: number
+        } | false
+    },
     callback: (err?: Error | null, status?: string) => void
 ): void {
     if (client.ipc) return callback(null, "already_connected");
@@ -57,7 +80,13 @@ export function connect(
     }
     const sock = zmq.socket("dealer");
     sock.identity = Buffer.from(String(process.pid));
-    sock.connect(`ipc://${tmpdir()}/pipeproc.${client.namespace || "default"}`);
+    if (options.tcp) {
+        sock.connect(`tcp://${options.tcp.host}:${options.tcp.port}`);
+        d("tcp connection established on host:", options.tcp.host, "and port:", options.tcp.port);
+    } else {
+        sock.connect(`ipc://${tmpdir()}/pipeproc.${options.namespace}`);
+        d("ipc established under namespace:", options.namespace);
+    }
     //messageMap listener init
     sock.on("message", function(_del, rawMessage: Buffer) {
         const message: IPipeProcMessage = JSON.parse(rawMessage.toString());

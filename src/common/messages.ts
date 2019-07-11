@@ -199,14 +199,22 @@ export interface IPipeProcSystemInitMessage extends IPipeProcMessage {
 export interface IPipeProcWorkerInitMessage extends IPipeProcMessage {
     type: "worker_init";
     data: {
-        namespace: string;
+        namespace?: string;
+        tcpSettings?: {
+            host: string,
+            port: number
+        }
     };
 }
 
 export interface IPipeProcInitIPCMessage extends IPipeProcMessage {
     type: "init_ipc";
     data: {
-        namespace: string
+        namespace?: string
+        tcp?: {
+            host: string,
+            port: number
+        }
     };
 }
 
@@ -433,13 +441,27 @@ export function prepareReclaimProcMessage(
     };
 }
 
-export function prepareWorkerInitMessage(namespace: string): IPipeProcWorkerInitMessage {
+export function prepareWorkerInitMessage(
+    namespace: string,
+    tcpSettings: {
+        host: string,
+        port: number
+    }
+): IPipeProcWorkerInitMessage {
+    let messageData;
+    if (tcpSettings) {
+        messageData = {
+            tcpSettings: tcpSettings
+        };
+    } else {
+        messageData = {
+            namespace: namespace
+        };
+    }
     return {
         type: "worker_init",
         msgKey: uuid(),
-        data: {
-            namespace: namespace
-        }
+        data: messageData
     };
 }
 

@@ -103,13 +103,18 @@ npm install --save pipeproc
 
 Spawn the node and connect to it.  
 If there is a need to spawn multiple nodes on the same host you can use the `namespace` option with a custom name.  
-If a custom `namespace` is used, all clients that will `connect()` to it will need to provide it.
+If a custom `namespace` is used, all clients that will `connect()` to it will need to provide it.  
+The node can also use a TCP interface instead of the default IPC one if there are clients that need to connect to it over the network.  
+`namespace` and `tcp` options can not be used at the same time.  
+By default the IPC interface is used.
 
 ```typescript
 spawn(
     options?: {
         //use a different ipc namespace
         namespace?: string,
+        //use the tpc interface
+        tcp?: {host: string, port: number},
         //use an in-memory store instead of the disk adapter
         memory?: boolean,
         //set the location of the underlying store (if memory is false)
@@ -126,13 +131,16 @@ spawn(
 
 Connect to an already spawned node.  
 
-Usecase: Connect to the same PipeProc instance from a different process (eg. electron renderer)
+Usecase: Connect to the same PipeProc instance from a different process (eg. electron renderer) or from a different computer over
+the network (by using the `tcp` option)
 
 ```typescript
 connect(
     options?: {
         //use a different ipc namespace
-        namespace?: string
+        namespace?: string,
+        //connect with tcp instead
+        tcp?: {host: string, port: number},
     }
 ): Promise<string>;
 ```

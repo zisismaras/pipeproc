@@ -56,7 +56,11 @@ const d = debug("pipeproc:node");
 let db: LevelDOWN.LevelDown;
 
 let ipcNamespace: string;
-let ipcServer: Socket;
+let tcpSettings: {
+    host: string,
+    port: number
+};
+let messageServer: Socket;
 
 export interface IActiveTopics {
     [key: string]: {
@@ -126,7 +130,7 @@ registerMessage<IPipeProcSystemInitMessage["data"], IPipeProcMessage["data"]>(me
             } else {
                 spawnWorkers(
                     data.options.workers || 0,
-                    activeWorkers, activeProcs, activeSystemProcs, ipcNamespace,
+                    activeWorkers, activeProcs, activeSystemProcs, ipcNamespace, tcpSettings,
                 function(spawnErr) {
                     if (err) {
                         callback((spawnErr && spawnErr.message) || "uknown_error");
@@ -431,9 +435,14 @@ registerMessage<IPipeProcReclaimProcMessage["data"], IPipeProcReclaimProcMessage
 
 const initIPCListener = function(e: IPipeProcInitIPCMessage) {
     if (e.type === "init_ipc") {
-        ipcNamespace = e.data.namespace;
+        if (e.data.namespace) {
+            ipcNamespace = e.data.namespace;
+        }
+        if (e.data.tcp) {
+            tcpSettings = e.data.tcp;
+        }
         process.removeListener("message", initIPCListener);
-        ipcServer = initializeMessages(writeBuffer, messageRegistry, ipcNamespace);
+        messageServer = initializeMessages(writeBuffer, messageRegistry, ipcNamespace, tcpSettings);
         if (process && typeof process.send === "function") {
             process.send(prepareMessage({type: "ipc_established", msgKey: e.msgKey}));
         }
@@ -443,7 +452,7 @@ const initIPCListener = function(e: IPipeProcInitIPCMessage) {
 const shutdownListener = function(e: IPipeProcMessage) {
     if (e.type === "system_shutdown") {
         d("shutting down...");
-        ipcServer.close();
+        messageServer.close();
         process.removeListener("message", shutdownListener);
         runShutdownHooks(db, systemState, activeWorkers, function(err) {
             if (err) {
