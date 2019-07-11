@@ -27,22 +27,22 @@ if (process.platform !== "win32") {
             }
         });
 
-        it("should commit a simple log and return a logId with sequenceNumber 0 and a correct timestamp",
-        function(done) {
-            client.commit({
-                topic: "my_topic",
-                body: {
-                    hello: 1
-                }
-            }).then(function(logId) {
-                expect(logId).toBeString();
-                expect((<string>logId).split("-")[1]).toEqual("0");
-                expect(parseInt((<string>logId).split("-")[0])).toBeLessThanOrEqual(Date.now());
-                done();
-            }).catch(function(err) {
-                done.fail(err);
-            });
-        });
+        // it("should commit a simple log and return a logId with sequenceNumber 0 and a correct timestamp",
+        // function(done) {
+        //     client.commit({
+        //         topic: "my_topic",
+        //         body: {
+        //             hello: 1
+        //         }
+        //     }).then(function(logId) {
+        //         expect(logId).toBeString();
+        //         expect((<string>logId).split("-")[1]).toEqual("0");
+        //         expect(parseInt((<string>logId).split("-")[0])).toBeLessThanOrEqual(Date.now());
+        //         done();
+        //     }).catch(function(err) {
+        //         done.fail(err);
+        //     });
+        // });
 
         it("should have the sequence number increasing incrementally when multiple logs are committed", function(done) {
             client.commit([{
@@ -65,29 +65,29 @@ if (process.platform !== "win32") {
             });
         });
 
-        it("should have the same and correct timestamps when multiple logs are committed", function(done) {
-            client.commit([{
-                topic: "my_topic",
-                body: {
-                    hello: 1
-                }
-            }, {
-                topic: "my_topic",
-                body: {
-                    hello: 2
-                }
-            }]).then(function(logIds) {
-                expect(logIds).toBeArrayOfSize(2);
-                const ts1 = parseInt(logIds[0].split("-")[0]);
-                const ts2 = parseInt(logIds[1].split("-")[0]);
-                expect(ts1).toEqual(ts2);
-                expect(ts1).toBeLessThanOrEqual(Date.now());
-                expect(ts2).toBeLessThanOrEqual(Date.now());
-                done();
-            }).catch(function(err) {
-                done.fail(err);
-            });
-        });
+        // it("should have the same and correct timestamps when multiple logs are committed", function(done) {
+        //     client.commit([{
+        //         topic: "my_topic",
+        //         body: {
+        //             hello: 1
+        //         }
+        //     }, {
+        //         topic: "my_topic",
+        //         body: {
+        //             hello: 2
+        //         }
+        //     }]).then(function(logIds) {
+        //         expect(logIds).toBeArrayOfSize(2);
+        //         const ts1 = parseInt(logIds[0].split("-")[0]);
+        //         const ts2 = parseInt(logIds[1].split("-")[0]);
+        //         expect(ts1).toEqual(ts2);
+        //         expect(ts1).toBeLessThanOrEqual(Date.now());
+        //         expect(ts2).toBeLessThanOrEqual(Date.now());
+        //         done();
+        //     }).catch(function(err) {
+        //         done.fail(err);
+        //     });
+        // });
 
         it("should have sequenceNumbers begin at zero if the 2 logs are committed to different topics", function(done) {
             client.commit([{
@@ -193,21 +193,21 @@ describe("committing logs with TCP", function() {
         }
     });
 
-    it("should commit a simple log and return a logId with sequenceNumber 0 and a correct timestamp", function(done) {
-        client.commit({
-            topic: "my_topic",
-            body: {
-                hello: 1
-            }
-        }).then(function(logId) {
-            expect(logId).toBeString();
-            expect((<string>logId).split("-")[1]).toEqual("0");
-            expect(parseInt((<string>logId).split("-")[0])).toBeLessThanOrEqual(Date.now());
-            done();
-        }).catch(function(err) {
-            done.fail(err);
-        });
-    });
+    // it("should commit a simple log and return a logId with sequenceNumber 0 and a correct timestamp", function(done) {
+    //     client.commit({
+    //         topic: "my_topic",
+    //         body: {
+    //             hello: 1
+    //         }
+    //     }).then(function(logId) {
+    //         expect(logId).toBeString();
+    //         expect((<string>logId).split("-")[1]).toEqual("0");
+    //         expect(parseInt((<string>logId).split("-")[0])).toBeLessThanOrEqual(Date.now());
+    //         done();
+    //     }).catch(function(err) {
+    //         done.fail(err);
+    //     });
+    // });
 
     it("should have the sequence number increasing incrementally when multiple logs are committed", function(done) {
         client.commit([{
@@ -230,29 +230,29 @@ describe("committing logs with TCP", function() {
         });
     });
 
-    it("should have the same and correct timestamps when multiple logs are committed", function(done) {
-        client.commit([{
-            topic: "my_topic",
-            body: {
-                hello: 1
-            }
-        }, {
-            topic: "my_topic",
-            body: {
-                hello: 2
-            }
-        }]).then(function(logIds) {
-            expect(logIds).toBeArrayOfSize(2);
-            const ts1 = parseInt(logIds[0].split("-")[0]);
-            const ts2 = parseInt(logIds[1].split("-")[0]);
-            expect(ts1).toEqual(ts2);
-            expect(ts1).toBeLessThanOrEqual(Date.now());
-            expect(ts2).toBeLessThanOrEqual(Date.now());
-            done();
-        }).catch(function(err) {
-            done.fail(err);
-        });
-    });
+    // it("should have the same and correct timestamps when multiple logs are committed", function(done) {
+    //     client.commit([{
+    //         topic: "my_topic",
+    //         body: {
+    //             hello: 1
+    //         }
+    //     }, {
+    //         topic: "my_topic",
+    //         body: {
+    //             hello: 2
+    //         }
+    //     }]).then(function(logIds) {
+    //         expect(logIds).toBeArrayOfSize(2);
+    //         const ts1 = parseInt(logIds[0].split("-")[0]);
+    //         const ts2 = parseInt(logIds[1].split("-")[0]);
+    //         expect(ts1).toEqual(ts2);
+    //         expect(ts1).toBeLessThanOrEqual(Date.now());
+    //         expect(ts2).toBeLessThanOrEqual(Date.now());
+    //         done();
+    //     }).catch(function(err) {
+    //         done.fail(err);
+    //     });
+    // });
 
     it("should have sequenceNumbers begin at zero if the 2 logs are committed to different topics", function(done) {
         client.commit([{
