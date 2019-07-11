@@ -106,7 +106,8 @@ If there is a need to spawn multiple nodes on the same host you can use the `nam
 If a custom `namespace` is used, all clients that will `connect()` to it will need to provide it.  
 The node can also use a TCP interface instead of the default IPC one if there are clients that need to connect to it over the network.  
 `namespace` and `tcp` options can not be used at the same time.  
-By default the IPC interface is used.
+By default the IPC interface is used.  
+**Note:** On windows, only the TCP interface is available and an error will be raised if the IPC interface is used.
 
 ```typescript
 spawn(

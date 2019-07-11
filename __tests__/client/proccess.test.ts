@@ -74,9 +74,9 @@ describe("spawning the node with TCP", function() {
             memory: true,
             workers: 0,
             tcp: {host: "127.0.0.1", port: await getRandomPort()}
-        }).then(function(status) {
+        }).then(async function(status) {
             expect(status).toEqual("spawned_and_connected");
-            client.spawn({memory: true}).then(function(status2) {
+            client.spawn({memory: true, tcp: {host: "127.0.0.1", port: await getRandomPort()}}).then(function(status2) {
                 expect(status2).toEqual("node_already_active");
                 done();
             }).catch(function(err) {
