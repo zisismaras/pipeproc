@@ -158,6 +158,9 @@ export function PipeProc(): IPipeProcClient {
                     return Promise.reject(new Error("cannot use both an ipc namespace and a tcp connection"));
                 }
             }
+            if (process.platform === "win32" && (!options || !options.tcp)) {
+                return Promise.reject(new Error("only the ipc interface is available on windows"));
+            }
             let workers: number;
             if (options && typeof options.workers === "number" && options.workers >= 0) {
                 workers = options.workers;
@@ -193,6 +196,9 @@ export function PipeProc(): IPipeProcClient {
                 if (options.namespace) {
                     return Promise.reject(new Error("cannot use both an ipc namespace and a tcp connection"));
                 }
+            }
+            if (process.platform === "win32" && (!options || !options.tcp)) {
+                return Promise.reject(new Error("only the ipc interface is available on windows"));
             }
             return new Promise(function(resolve, reject) {
                 connect(pipeProcClient, {
