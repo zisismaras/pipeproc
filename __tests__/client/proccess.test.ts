@@ -51,18 +51,15 @@ describe("connecting to an existing node", function() {
         return client.spawn({memory: true, workers: 0, tcp: tcp});
     });
 
-    afterEach(function() {
-        if (client.pipeProcNode) {
-            return client.shutdown();
-        } else {
-            return Promise.resolve();
-        }
+    afterEach(async function() {
+        await client.shutdown();
     });
 
     it("should be able to connect to an existing node", async function() {
         const client2 = PipeProc();
         const status = await client2.connect({tcp: tcp});
         expect(status).toEqual("connected");
+        await client2.shutdown();
     });
 
     it("should allow multiple clients to connect", async function() {
@@ -72,6 +69,8 @@ describe("connecting to an existing node", function() {
         expect(status).toEqual("connected");
         const status2 = await client3.connect({tcp: tcp});
         expect(status2).toEqual("connected");
+        await client2.shutdown();
+        await client3.shutdown();
     });
 
     it("should return a notice if we are already connected", async function() {
