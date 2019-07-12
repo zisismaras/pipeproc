@@ -18,9 +18,7 @@ describe("committing logs with TCP", function() {
     });
 
     afterEach(async function() {
-        try {
-            await client.shutdown();
-        } catch (_e) {}
+        await client.shutdown();
     });
 
     it("should commit a simple log and return a logId with sequenceNumber 0 and a correct timestamp", async function() {

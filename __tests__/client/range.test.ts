@@ -20,9 +20,7 @@ describe("using range", function() {
     });
 
     afterEach(async function() {
-        try {
-            await client.shutdown();
-        } catch (_e) {}
+        await client.shutdown();
     });
 
     it("should get the whole topic if no start and end are provided", async function() {

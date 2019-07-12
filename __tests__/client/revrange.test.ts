@@ -23,9 +23,7 @@ describe("using revrange", function() {
     });
 
     afterEach(async function() {
-        try {
-            await client.shutdown();
-        } catch (_e) {}
+        await client.shutdown();
     });
 
     it("should not return results if start < end", async function() {

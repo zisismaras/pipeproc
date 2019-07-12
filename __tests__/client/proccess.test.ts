@@ -12,9 +12,7 @@ describe("spawning the node", function() {
     });
 
     afterEach(async function() {
-        try {
-            await client.shutdown();
-        } catch (_e) {}
+        await client.shutdown();
     });
 
     it("should spawn correctly", async function() {
