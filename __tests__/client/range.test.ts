@@ -156,23 +156,15 @@ describe("using range with TCP", function() {
     let testLogIds: string[];
     let client: IPipeProcClient;
 
-    beforeEach(async function(done) {
+    beforeEach(async function() {
         client = PipeProc();
 
-        client.spawn({
+        await client.spawn({
             memory: true,
             workers: 0,
             tcp: {host: "127.0.0.1", port: await getRandomPort()}
-        }).then(function() {
-            commitSomeLogs(client).then(function(logs) {
-                testLogIds = logs;
-                done();
-            }).catch(function(err) {
-                done.fail(err);
-            });
-        }).catch(function(err) {
-            done.fail(err);
         });
+        testLogIds = await commitSomeLogs(client);
     });
 
     afterEach(function() {

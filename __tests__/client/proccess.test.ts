@@ -58,33 +58,27 @@ describe("spawning the node with TCP", function() {
         }
     });
 
-    it("should spawn correctly", async function(done) {
-        client.spawn({
+    it("should spawn correctly", async function() {
+        const status = await client.spawn({
             memory: true,
             workers: 0,
             tcp: {host: "127.0.0.1", port: await getRandomPort()}
-        }).then(function(status) {
-            expect(status).toEqual("spawned_and_connected");
-            done();
         });
+        expect(status).toEqual("spawned_and_connected");
     });
 
-    it("should return a warning if spawned twice", async function(done) {
-        client.spawn({
+    it("should return a warning if spawned twice", async function() {
+        const status = await client.spawn({
             memory: true,
             workers: 0,
             tcp: {host: "127.0.0.1", port: await getRandomPort()}
-        }).then(async function(status) {
-            expect(status).toEqual("spawned_and_connected");
-            client.spawn({memory: true, tcp: {host: "127.0.0.1", port: await getRandomPort()}}).then(function(status2) {
-                expect(status2).toEqual("node_already_active");
-                done();
-            }).catch(function(err) {
-                done.fail(err);
-            });
-        }).catch(function(err) {
-            done.fail(err);
         });
+        expect(status).toEqual("spawned_and_connected");
+        const status2 = await client.spawn({
+            memory: true,
+            tcp: {host: "127.0.0.1", port: await getRandomPort()}
+        });
+        expect(status2).toEqual("node_already_active");
     });
 });
 
@@ -141,14 +135,10 @@ describe("connecting to an existing node with TCP", function() {
     let client: IPipeProcClient;
     let tcp;
 
-    beforeEach(async function(done) {
+    beforeEach(async function() {
         client = PipeProc();
         tcp = {host: "127.0.0.1", port: await getRandomPort()};
-        client.spawn({memory: true, workers: 0, tcp: tcp}).then(function() {
-            done();
-        }).catch(function(err) {
-            done.fail(err);
-        });
+        return client.spawn({memory: true, workers: 0, tcp: tcp});
     });
 
     afterEach(function() {
@@ -221,20 +211,15 @@ describe("shutting down a node with TCP", function() {
         client = PipeProc();
     });
 
-    it("should be able to shutdown a node", async function(done) {
+    it("should be able to shutdown a node", async function() {
         //spawn it first
-        client.spawn({
+        await client.spawn({
             memory: true,
             workers: 1,
             tcp: {host: "127.0.0.1", port: await getRandomPort()}
-        }).then(function() {
-            client.shutdown().then(function(status) {
-                expect(status).toEqual("closed");
-                done();
-            });
-        }).catch(function(err) {
-            done.fail(err);
         });
+        const status = await client.shutdown();
+        expect(status).toEqual("closed");
     });
 
     it("should raise an error if there is no active node", function(done) {

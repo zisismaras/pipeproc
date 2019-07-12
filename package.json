@@ -22,7 +22,7 @@
     "multi process"
   ],
   "scripts": {
-    "test": "(tsc || echo \"compiled\") && jest --forceExit --ci --runInBand",
+    "test": "(tsc || echo \"compiled\") && jest --forceExit --ci",
     "prepublishOnly": "tsc --build --clean && tsc --build && rm -rf ./lib/typings && cp -r ./src/typings ./lib/typings"
   },
   "jest": {

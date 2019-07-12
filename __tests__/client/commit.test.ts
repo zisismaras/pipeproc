@@ -171,17 +171,13 @@ if (process.platform !== "win32") {
 describe("committing logs with TCP", function() {
     let client: IPipeProcClient;
 
-    beforeEach(async function(done) {
+    beforeEach(async function() {
         client = PipeProc();
 
-        client.spawn({
+        return client.spawn({
             memory: true,
             workers: 0,
             tcp: {host: "127.0.0.1", port: await getRandomPort()}
-        }).then(function() {
-            done();
-        }).catch(function(err) {
-            done.fail(err);
         });
     });
 
