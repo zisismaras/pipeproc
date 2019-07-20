@@ -39,8 +39,8 @@ export function spawn(
         ipcClient.on("message", function(message: IPipeProcMessage) {
             if (typeof client.messageMap[message.msgKey] === "function") {
                 client.messageMap[message.msgKey](message);
-                delete client.messageMap[message.msgKey];
             }
+            delete client.messageMap[message.msgKey];
         });
         const ipcd = debug("pipeproc:ipc:client");
         ipcClient.on("error", function(err: Error) {
@@ -74,8 +74,8 @@ export function connect(
     ipcClient.on("message", function(message: IPipeProcMessage) {
         if (typeof client.messageMap[message.msgKey] === "function") {
             client.messageMap[message.msgKey](message);
-            delete client.messageMap[message.msgKey];
         }
+        delete client.messageMap[message.msgKey];
     });
     if (options.isWorker) {
         const ipcd = debug("pipeproc:ipc:worker");
@@ -95,10 +95,12 @@ export function shutdown(
     client: IPipeProcClient,
     callback: (err?: Error | null, status?: string) => void
 ): void {
-    if (client.pipeProcNode) {
-        d("closing node...");
+    if (client.ipc) {
         //@ts-ignore
         client.ipc.close();
+    }
+    if (client.pipeProcNode) {
+        d("closing node...");
         const shutDownMessage = prepareMessage({type: "system_shutdown"});
         const systemClosedListener = function(e: IPipeProcMessage) {
             if (e.msgKey !== shutDownMessage.msgKey) return;
