@@ -27,7 +27,6 @@ export interface ICommitLog {
 }
 
 export interface IPipeProcClient {
-    namespace: string;
     pipeProcNode?: ChildProcess | {};
     connectSocket?: ConnectSocket;
     messageMap: {
@@ -41,6 +40,11 @@ export interface IPipeProcClient {
     spawn(
         options?: {
             namespace?: string,
+            tcp?: {
+                host: string,
+                port: number
+            },
+            socket?: string,
             memory?: boolean,
             location?: string,
             workers?: number,
@@ -50,6 +54,11 @@ export interface IPipeProcClient {
     connect(
         options?: {
             namespace?: string,
+            tcp?: {
+                host: string,
+                port: number
+            },
+            socket?: string,
             isWorker?: boolean
         }
     ): Promise<string>;
@@ -137,11 +146,20 @@ export interface IPipeProcClient {
 export function PipeProc(): IPipeProcClient {
 //tslint:enable function-name
     const pipeProcClient: IPipeProcClient = {
-        namespace: "default",
         messageMap: {},
         spawn: function(options) {
+            let namespace = "default";
             if (options && options.namespace && typeof options.namespace === "string") {
-                this.namespace = options.namespace;
+                namespace = options.namespace;
+            }
+            let address = "";
+            if (options && options.socket && typeof options.socket === "string") {
+                address = options.socket;
+            }
+            if (options && options.tcp) {
+                if (!options.tcp.host || !options.tcp.port) {
+                    return Promise.reject(new Error("tcp connection needs a host and a port"));
+                }
             }
             let workers: number;
             if (options && typeof options.workers === "number" && options.workers >= 0) {
@@ -151,6 +169,9 @@ export function PipeProc(): IPipeProcClient {
             }
             return new Promise(function(resolve, reject) {
                 spawn(pipeProcClient, {
+                    address: address,
+                    namespace: namespace,
+                    tcp: (options && options.tcp) || false,
                     memory: (options && options.memory) || false,
                     location: (options && options.location) || "./pipeproc_data",
                     workers: workers,
@@ -165,11 +186,24 @@ export function PipeProc(): IPipeProcClient {
             });
         },
         connect: function(options) {
+            let namespace = "default";
             if (options && options.namespace && typeof options.namespace === "string") {
-                this.namespace = options.namespace;
+                namespace = options.namespace;
+            }
+            let address = "";
+            if (options && options.socket && typeof options.socket === "string") {
+                address = options.socket;
+            }
+            if (options && options.tcp) {
+                if (!options.tcp.host || !options.tcp.port) {
+                    return Promise.reject(new Error("tcp connection needs a host and a port"));
+                }
             }
             return new Promise(function(resolve, reject) {
                 connect(pipeProcClient, {
+                    address: address,
+                    namespace: namespace,
+                    tcp: (options && options.tcp) || false,
                     isWorker: (options && options.isWorker) || false
                 }, function(err, status) {
                     if (err) {

@@ -11,6 +11,12 @@ const d = debug("pipeproc:client");
 export function spawn(
     client: IPipeProcClient,
     options: {
+        address: string,
+        namespace: string,
+        tcp: {
+            host: string,
+            port: number
+        } | false,
         memory: boolean,
         location: string,
         workers: number,
@@ -21,19 +27,36 @@ export function spawn(
     if (client.pipeProcNode) return callback(null, "node_already_active");
     d("spawning node...");
     client.pipeProcNode = forkProcess(`${__dirname}/../node/pipeProc`);
-    const initIPCMessage = prepareMessage({type: "init_ipc", data: {namespace: client.namespace}});
+    let connectionAddress: string;
+    if (options.address) {
+        connectionAddress = options.address;
+    } else if (options.tcp) {
+        connectionAddress = `tcp://${options.tcp.host}:${options.tcp.port}`;
+    } else {
+        connectionAddress = `ipc://${tmpdir()}/pipeproc.${options.namespace}`;
+    }
+    const initIPCMessage = prepareMessage({type: "init_ipc", data: {address: connectionAddress}});
     const ipcEstablishedListener = function(e: IPipeProcIPCEstablishedMessage) {
         if ((e.type !== "ipc_established") || e.msgKey !== initIPCMessage.msgKey) return;
         if (e.errStatus) {
             return callback(new Error(e.errStatus));
         }
-        d("ipc established under namespace:", client.namespace);
         (<ChildProcess>client.pipeProcNode).removeListener("message", ipcEstablishedListener);
-        socketConnect(`ipc://${tmpdir()}/pipeproc.${client.namespace || "default"}`, {}, function(err, connectSocket) {
+        socketConnect(connectionAddress, {}, function(err, connectSocket) {
             if (err) {
                 return callback(err);
             }
+            if (!connectSocket) {
+                return callback(new Error("Failed to create socket"));
+            }
             client.connectSocket = connectSocket;
+            if (options.address) {
+                d("using connection address:", options.address);
+            } if (options.tcp) {
+                d("tcp connection established on host:", options.tcp.host, "and port:", options.tcp.port);
+            } else {
+                d("ipc established under namespace:", options.namespace);
+            }
             //messageMap listener init
             client.connectSocket.onMessage<IPipeProcMessage>(function(message) {
                 if (typeof client.messageMap[message.msgKey] === "function") {
@@ -56,7 +79,15 @@ export function spawn(
 
 export function connect(
     client: IPipeProcClient,
-    options: {isWorker: boolean},
+    options: {
+        address: string,
+        namespace: string,
+        tcp: {
+            host: string,
+            port: number
+        } | false,
+        isWorker: boolean
+    },
     callback: (err?: Error | null, status?: string) => void
 ): void {
     if (client.connectSocket) return callback(null, "already_connected");
@@ -65,12 +96,29 @@ export function connect(
     } else if (!client.pipeProcNode) {
         client.pipeProcNode = {};
     }
-    socketConnect(`ipc://${tmpdir()}/pipeproc.${client.namespace || "default"}`, {}, function(err, connectSocket) {
+    let connectionAddress: string;
+    if (options.address) {
+        connectionAddress = options.address;
+    } else if (options.tcp) {
+        connectionAddress = `tcp://${options.tcp.host}:${options.tcp.port}`;
+    } else {
+        connectionAddress = `ipc://${tmpdir()}/pipeproc.${options.namespace}`;
+    }
+    socketConnect(connectionAddress, {}, function(err, connectSocket) {
         if (err) {
             return callback(err);
         }
-        d("connected to ipc channel");
+        if (!connectSocket) {
+            return callback(new Error("Failed to create socket"));
+        }
         client.connectSocket = connectSocket;
+        if (options.address) {
+            d("using connection address:", options.address);
+        } if (options.tcp) {
+            d("tcp connection established on host:", options.tcp.host, "and port:", options.tcp.port);
+        } else {
+            d("ipc established under namespace:", options.namespace);
+        }
         //messageMap listener init
         client.connectSocket.onMessage<IPipeProcMessage>(function(message) {
             if (typeof client.messageMap[message.msgKey] === "function") {

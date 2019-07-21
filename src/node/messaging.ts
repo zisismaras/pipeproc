@@ -4,7 +4,6 @@ import {
 } from "../common/messages";
 import {IWriteBuffer} from "./writeBuffer";
 import {IWorker} from "./workerManager";
-import {tmpdir} from "os";
 
 import {bind, ServerSocket} from "../socket/bind";
 
@@ -53,12 +52,15 @@ export function registerMessage<T, U>(registry: IMessageRegistry, newMessage: me
 export function initializeMessages(
     writeBuffer: IWriteBuffer,
     registry: IMessageRegistry,
-    namespace: string,
-    callback: (err: Error | null, socketServer: ServerSocket) => void
+    address: string,
+    callback: (err: Error | null, socketServer?: ServerSocket) => void
 ) {
-    bind(`ipc://${tmpdir()}/pipeproc.${namespace || "default"}`, {}, function(err, server) {
+    bind(address, {}, function(err, server) {
         if (err) {
-            return callback(err, server);
+            return callback(err);
+        }
+        if (!server) {
+            return callback(new Error("failed_to_create_server"));
         }
         server.onMessage<IPipeProcMessage>(function(msg, binder) {
             if (!registry[msg.type]) return;

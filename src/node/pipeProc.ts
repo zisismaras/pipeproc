@@ -54,8 +54,7 @@ import {ServerSocket} from "../socket/bind";
 const d = debug("pipeproc:node");
 
 let db: LevelDOWN.LevelDown;
-
-let ipcNamespace: string;
+let connectionAddress: string;
 let serverSocket: ServerSocket;
 
 export interface IActiveTopics {
@@ -126,7 +125,7 @@ registerMessage<IPipeProcSystemInitMessage["data"], IPipeProcMessage["data"]>(me
             } else {
                 spawnWorkers(
                     data.options.workers || 0,
-                    activeWorkers, activeProcs, activeSystemProcs, ipcNamespace,
+                    activeWorkers, activeProcs, activeSystemProcs, connectionAddress,
                 function(spawnErr) {
                     if (err) {
                         callback((spawnErr && spawnErr.message) || "uknown_error");
@@ -431,9 +430,9 @@ registerMessage<IPipeProcReclaimProcMessage["data"], IPipeProcReclaimProcMessage
 
 const initIPCListener = function(e: IPipeProcInitIPCMessage) {
     if (e.type === "init_ipc") {
-        ipcNamespace = e.data.namespace;
         process.removeListener("message", initIPCListener);
-        initializeMessages(writeBuffer, messageRegistry, ipcNamespace, function(err, socket) {
+        connectionAddress = e.data.address;
+        initializeMessages(writeBuffer, messageRegistry, connectionAddress, function(err, socket) {
             if (err) {
                 if (process && typeof process.send === "function") {
                     process.send(prepareMessage({
@@ -443,7 +442,7 @@ const initIPCListener = function(e: IPipeProcInitIPCMessage) {
                     }));
                 }
             } else {
-                serverSocket = socket;
+                serverSocket = <ServerSocket>socket;
                 if (process && typeof process.send === "function") {
                     process.send(prepareMessage({type: "ipc_established", msgKey: e.msgKey}));
                 }

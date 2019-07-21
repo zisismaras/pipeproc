@@ -21,7 +21,7 @@ export function spawnWorkers(
     activeWorkers: IWorker[],
     activeProcs: IProc[],
     activeSystemProcs: ISystemProc[],
-    namespace: string,
+    address: string,
     callback: (err?: Error | null) => void
 ): void {
     if (!workers) return process.nextTick(callback);
@@ -31,7 +31,7 @@ export function spawnWorkers(
         const worker = {process: fork(`${__dirname}/worker/worker`)};
         series([
             function(cb) {
-                const msg = prepareWorkerInitMessage(namespace);
+                const msg = prepareWorkerInitMessage(address);
                 const listener = function(e: IPipeProcWorkerInitMessageReply) {
                     if (e.msgKey === msg.msgKey) {
                         worker.process.removeListener("message", listener);

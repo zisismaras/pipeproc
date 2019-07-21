@@ -1,4 +1,4 @@
-import {createConnection} from "net";
+import {createConnection, Socket} from "net";
 import {getSender} from "./send";
 import {xpipe} from "./xpipe";
 import debug from "debug";
@@ -17,14 +17,25 @@ const d = debug("pipeproc:socket:connect");
 export function connect(
     address: string,
     options: {},
-    callback: (err: Error | null, socketServer: ConnectSocket) => void
+    callback: (err: Error | null, socketServer?: ConnectSocket) => void
 ) {
     //tslint:disable no-any
     const messageListeners: MessageListener<any>[] = [];
     //tslint:enable no-any
     const errorListeners: MessageListener<Error>[] = [];
-    const socketPath = address.replace("ipc://", "");
-    const socket = createConnection(xpipe(socketPath));
+    let socket: Socket;
+    if (address.includes("ipc://")) {
+        const socketPath = address.replace("ipc://", "");
+        socket = createConnection(xpipe(socketPath));
+    } else if (address.includes("tcp://")) {
+        const parts = address.replace("tcp://", "").split(":");
+        socket = createConnection({
+            port: parseInt(parts[1]),
+            host: parts[0]
+        });
+    } else {
+        return callback(new Error(`Invalid connection address: ${address}`));
+    }
     const connectSocket: ConnectSocket = {
         onError: function(listener) {
             errorListeners.push(listener);
@@ -50,7 +61,7 @@ export function connect(
         d("Socket error:", err);
         if (!cbCalled) {
             cbCalled = true;
-            return callback(err, connectSocket);
+            return callback(err);
         }
         errorListeners.forEach(function(listener) {
             listener(err);

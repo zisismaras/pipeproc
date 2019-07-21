@@ -23,7 +23,7 @@ export type ServerSocket = {
 export function bind(
     address: string,
     options: {},
-    callback: (err: Error | null, socketServer: ServerSocket) => void
+    callback: (err: Error | null, socketServer?: ServerSocket) => void
 ) {
     //tslint:disable no-any
     const messageListeners: MessageListener<any>[] = [];
@@ -32,6 +32,12 @@ export function bind(
     const server = createServer();
     const socketServer: ServerSocket = {
         close: function() {
+            if (address.includes("ipc://")) {
+                const socketPath = address.replace("ipc://", "");
+                try {
+                    unlinkSync(socketPath);
+                } catch (_e) {}
+            }
             server.close();
         },
         onMessage: function(listener) {
@@ -54,7 +60,7 @@ export function bind(
             d("Socket error:", err);
             if (!cbCalled) {
                 cbCalled = true;
-                callback(err, socketServer);
+                callback(err);
             }
         }
     });
@@ -102,6 +108,9 @@ function startServer(server: Server, address: string) {
     if (address.includes("ipc://")) {
         const socketPath = address.replace("ipc://", "");
         server.listen(xpipe(socketPath));
+    } else if (address.includes("tcp://")) {
+        const parts = address.replace("tcp://", "").split(":");
+        server.listen(parseInt(parts[1]), parts[0]);
     }
 }
 
