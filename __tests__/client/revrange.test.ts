@@ -40,6 +40,8 @@ describe("using revrange", function() {
         }).then(function(logs) {
             expect(logs).toBeArrayOfSize(0);
             done();
+        }).catch(function(err) {
+            done.fail(err);
         });
     });
 
@@ -52,6 +54,8 @@ describe("using revrange", function() {
             expect(logs[1].id).toEqual(testLogIds[1]);
             expect(logs[2].id).toEqual(testLogIds[0]);
             done();
+        }).catch(function(err) {
+            done.fail(err);
         });
     });
 

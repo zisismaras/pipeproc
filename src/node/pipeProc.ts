@@ -49,13 +49,14 @@ import {disableProc, resumeProc} from "./resumeDisableProc";
 import {reclaimProc} from "./reclaimProc";
 import {collect} from "./gc/collect";
 import {waitForProcs} from "./waitForProcs";
+import {ServerSocket} from "../socket/bind";
 
 const d = debug("pipeproc:node");
 
 let db: LevelDOWN.LevelDown;
 
 let ipcNamespace: string;
-let ipcServer: {close: () => void};
+let serverSocket: ServerSocket;
 
 export interface IActiveTopics {
     [key: string]: {
@@ -432,18 +433,29 @@ const initIPCListener = function(e: IPipeProcInitIPCMessage) {
     if (e.type === "init_ipc") {
         ipcNamespace = e.data.namespace;
         process.removeListener("message", initIPCListener);
-        ipcServer = initializeMessages(writeBuffer, messageRegistry, ipcNamespace);
-        if (process && typeof process.send === "function") {
-            process.send(prepareMessage({type: "ipc_established", msgKey: e.msgKey}));
-        }
+        initializeMessages(writeBuffer, messageRegistry, ipcNamespace, function(err, socket) {
+            if (err) {
+                if (process && typeof process.send === "function") {
+                    process.send(prepareMessage({
+                        type: "ipc_established",
+                        msgKey: e.msgKey,
+                        errStatus: err.message
+                    }));
+                }
+            } else {
+                serverSocket = socket;
+                if (process && typeof process.send === "function") {
+                    process.send(prepareMessage({type: "ipc_established", msgKey: e.msgKey}));
+                }
+            }
+        });
     }
 };
 
 const shutdownListener = function(e: IPipeProcMessage) {
     if (e.type === "system_shutdown") {
         d("shutting down...");
-        //@ts-ignore
-        ipcServer.close();
+        serverSocket.close();
         process.removeListener("message", shutdownListener);
         runShutdownHooks(db, systemState, activeWorkers, function(err) {
             if (err) {

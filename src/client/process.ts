@@ -3,9 +3,8 @@ import debug from "debug";
 import {prepareMessage, IPipeProcMessage, IPipeProcIPCEstablishedMessage} from "../common/messages";
 import {IPipeProcClient} from ".";
 import {tmpdir} from "os";
-//@ts-ignore
-import {Client} from "@crussell52/socket-ipc";
-import {xpipe} from "../common/xpipe";
+
+import {connect as socketConnect} from "../socket/connect";
 
 const d = debug("pipeproc:client");
 
@@ -24,29 +23,32 @@ export function spawn(
     client.pipeProcNode = forkProcess(`${__dirname}/../node/pipeProc`);
     const initIPCMessage = prepareMessage({type: "init_ipc", data: {namespace: client.namespace}});
     const ipcEstablishedListener = function(e: IPipeProcIPCEstablishedMessage) {
-        if (e.type !== "ipc_established" || e.msgKey !== initIPCMessage.msgKey) return;
+        if ((e.type !== "ipc_established") || e.msgKey !== initIPCMessage.msgKey) return;
+        if (e.errStatus) {
+            return callback(new Error(e.errStatus));
+        }
         d("ipc established under namespace:", client.namespace);
         (<ChildProcess>client.pipeProcNode).removeListener("message", ipcEstablishedListener);
-        const ipcClient = new Client({socketFile: xpipe(`${tmpdir()}/pipeproc.${client.namespace || "default"}`)});
-        ipcClient.on("connect", function() {
-            d("connected to ipc channel");
-            client.ipc = ipcClient;
-            ipcClient.send("message",
-                prepareMessage({type: "system_init", data: {options: options}}));
-            callback(null, "spawned_and_connected");
-        });
-        //messageMap listener init
-        ipcClient.on("message", function(message: IPipeProcMessage) {
-            if (typeof client.messageMap[message.msgKey] === "function") {
-                client.messageMap[message.msgKey](message);
+        socketConnect(`ipc://${tmpdir()}/pipeproc.${client.namespace || "default"}`, {}, function(err, connectSocket) {
+            if (err) {
+                return callback(err);
             }
-            delete client.messageMap[message.msgKey];
+            client.connectSocket = connectSocket;
+            //messageMap listener init
+            client.connectSocket.onMessage<IPipeProcMessage>(function(message) {
+                if (typeof client.messageMap[message.msgKey] === "function") {
+                    client.messageMap[message.msgKey](message);
+                }
+                delete client.messageMap[message.msgKey];
+            });
+            const ipcd = debug("pipeproc:ipc:client");
+            client.connectSocket.onError(function(ipcError) {
+                ipcd("client IPC error:", ipcError);
+            });
+            client.connectSocket.send(prepareMessage({type: "system_init", data: {options: options}}), function() {
+                callback(null, "spawned_and_connected");
+            });
         });
-        const ipcd = debug("pipeproc:ipc:client");
-        ipcClient.on("error", function(err: Error) {
-            ipcd("client IPC error:", err);
-        });
-        ipcClient.connect();
     };
     (<ChildProcess>client.pipeProcNode).on("message", ipcEstablishedListener);
     (<ChildProcess>client.pipeProcNode).send(initIPCMessage);
@@ -57,47 +59,49 @@ export function connect(
     options: {isWorker: boolean},
     callback: (err?: Error | null, status?: string) => void
 ): void {
-    if (client.ipc) return callback(null, "already_connected");
+    if (client.connectSocket) return callback(null, "already_connected");
     if (!client.pipeProcNode && options.isWorker) {
         client.pipeProcNode = process;
     } else if (!client.pipeProcNode) {
         client.pipeProcNode = {};
     }
-    const ipcClient = new Client({socketFile: xpipe(`${tmpdir()}/pipeproc.${client.namespace || "default"}`)});
-    ipcClient.on("connect", function() {
-        d("connected to ipc channel");
-        client.ipc = ipcClient;
-        ipcClient.send("message", prepareMessage({type: "connected", data: {}}));
-        callback(null, "connected");
-    });
-    //messageMap listener init
-    ipcClient.on("message", function(message: IPipeProcMessage) {
-        if (typeof client.messageMap[message.msgKey] === "function") {
-            client.messageMap[message.msgKey](message);
+    socketConnect(`ipc://${tmpdir()}/pipeproc.${client.namespace || "default"}`, {}, function(err, connectSocket) {
+        if (err) {
+            return callback(err);
         }
-        delete client.messageMap[message.msgKey];
+        d("connected to ipc channel");
+        client.connectSocket = connectSocket;
+        //messageMap listener init
+        client.connectSocket.onMessage<IPipeProcMessage>(function(message) {
+            if (typeof client.messageMap[message.msgKey] === "function") {
+                client.messageMap[message.msgKey](message);
+            }
+            delete client.messageMap[message.msgKey];
+        });
+        if (options.isWorker) {
+            const ipcd = debug("pipeproc:ipc:worker");
+            client.connectSocket.onError(function(ipcErr) {
+                ipcd("client IPC error:", ipcErr);
+            });
+        } else {
+            const ipcd = debug("pipeproc:ipc:client");
+            client.connectSocket.onError(function(ipcErr) {
+                ipcd("client IPC error:", ipcErr);
+            });
+        }
+        client.connectSocket.send(prepareMessage({type: "connected", data: {}}), function() {
+            callback(null, "connected");
+        });
     });
-    if (options.isWorker) {
-        const ipcd = debug("pipeproc:ipc:worker");
-        ipcClient.on("error", function(err: Error) {
-            ipcd("client IPC error:", err);
-        });
-    } else {
-        const ipcd = debug("pipeproc:ipc:client");
-        ipcClient.on("error", function(err: Error) {
-            ipcd("client IPC error:", err);
-        });
-    }
-    ipcClient.connect();
 }
 
 export function shutdown(
     client: IPipeProcClient,
     callback: (err?: Error | null, status?: string) => void
 ): void {
-    if (client.ipc) {
+    if (client.connectSocket) {
         //@ts-ignore
-        client.ipc.close();
+        client.connectSocket.close();
     }
     if (client.pipeProcNode) {
         d("closing node...");
@@ -106,7 +110,7 @@ export function shutdown(
             if (e.msgKey !== shutDownMessage.msgKey) return;
             (<ChildProcess>client.pipeProcNode).removeListener("message", systemClosedListener);
             delete client.pipeProcNode;
-            delete client.ipc;
+            delete client.connectSocket;
             if (e.type === "system_closed") {
                 d("node closed");
                 callback(null, "closed");
@@ -132,13 +136,13 @@ export function sendMessageToNode(
         }
         return;
     }
-    if (!client.ipc) {
+    if (!client.connectSocket) {
         if (typeof callback === "function") {
             callback(new Error("no_active_ipc_channel"));
         }
         return;
     }
-    //@ts-ignore
-    client.ipc.send("message", msg);
-    if (typeof callback === "function") callback();
+    client.connectSocket.send(msg, function() {
+        if (typeof callback === "function") callback();
+    });
 }
