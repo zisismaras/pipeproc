@@ -1,4 +1,5 @@
 import {createConnection, Socket} from "net";
+import {connect as createTlsConnection, TLSSocket} from "tls";
 import {getSender} from "./send";
 import {xpipe} from "./xpipe";
 import debug from "debug";
@@ -16,25 +17,46 @@ const d = debug("pipeproc:socket:connect");
 
 export function connect(
     address: string,
-    options: {},
+    options: {
+        tls: {
+            key: string;
+            cert: string;
+            ca: string;
+        } | false
+    },
     callback: (err: Error | null, socketServer?: ConnectSocket) => void
 ) {
     //tslint:disable no-any
     const messageListeners: MessageListener<any>[] = [];
     //tslint:enable no-any
     const errorListeners: MessageListener<Error>[] = [];
-    let socket: Socket;
-    if (address.includes("ipc://")) {
-        const socketPath = address.replace("ipc://", "");
-        socket = createConnection(xpipe(socketPath));
-    } else if (address.includes("tcp://")) {
-        const parts = address.replace("tcp://", "").split(":");
-        socket = createConnection({
-            port: parseInt(parts[1]),
-            host: parts[0]
-        });
+    let socket: Socket | TLSSocket;
+    if (options.tls) {
+        if (address.includes("tcp://")) {
+            const parts = address.replace("tcp://", "").split(":");
+            socket = createTlsConnection({
+                port: parseInt(parts[1]),
+                host: parts[0],
+                ca: options.tls.ca,
+                key: options.tls.key,
+                cert: options.tls.cert
+            });
+        } else {
+            return callback(new Error(`Invalid connection address: ${address}`));
+        }
     } else {
-        return callback(new Error(`Invalid connection address: ${address}`));
+        if (address.includes("ipc://")) {
+            const socketPath = address.replace("ipc://", "");
+            socket = createConnection(xpipe(socketPath));
+        } else if (address.includes("tcp://")) {
+            const parts = address.replace("tcp://", "").split(":");
+            socket = createConnection({
+                port: parseInt(parts[1]),
+                host: parts[0]
+            });
+        } else {
+            return callback(new Error(`Invalid connection address: ${address}`));
+        }
     }
     const connectSocket: ConnectSocket = {
         onError: function(listener) {
@@ -44,7 +66,7 @@ export function connect(
             messageListeners.push(listener);
         },
         close: function() {
-            socket.end();
+            socket.destroy();
         },
         send: getSender(socket)
     };

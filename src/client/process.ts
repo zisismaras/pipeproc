@@ -3,6 +3,7 @@ import debug from "debug";
 import {prepareMessage, IPipeProcMessage, IPipeProcIPCEstablishedMessage} from "../common/messages";
 import {IPipeProcClient} from ".";
 import {tmpdir} from "os";
+import {readFileSync} from "fs";
 
 import {connect as socketConnect} from "../socket/connect";
 
@@ -20,7 +21,19 @@ export function spawn(
         memory: boolean,
         location: string,
         workers: number,
-        gc?: {minPruneTime?: number, interval?: number} | boolean
+        gc?: {minPruneTime?: number, interval?: number} | boolean,
+        tls: {
+            server: {
+                key: string;
+                cert: string;
+                ca: string;
+            },
+            client: {
+                key: string;
+                cert: string;
+                ca: string;
+            }
+        } | false
     },
     callback: (err?: Error | null, status?: string) => void
 ): void {
@@ -35,14 +48,23 @@ export function spawn(
     } else {
         connectionAddress = `ipc://${tmpdir()}/pipeproc.${options.namespace}`;
     }
-    const initIPCMessage = prepareMessage({type: "init_ipc", data: {address: connectionAddress}});
+    const initIPCMessage = prepareMessage({type: "init_ipc", data: {address: connectionAddress, tls: options.tls}});
     const ipcEstablishedListener = function(e: IPipeProcIPCEstablishedMessage) {
         if ((e.type !== "ipc_established") || e.msgKey !== initIPCMessage.msgKey) return;
         if (e.errStatus) {
             return callback(new Error(e.errStatus));
         }
+        try {
+            if (options.tls) {
+                options.tls.client.ca = readFileSync(options.tls.client.ca, "utf8");
+                options.tls.client.key = readFileSync(options.tls.client.key, "utf8");
+                options.tls.client.cert = readFileSync(options.tls.client.cert, "utf8");
+            }
+        } catch (e) {
+            return callback(e);
+        }
         (<ChildProcess>client.pipeProcNode).removeListener("message", ipcEstablishedListener);
-        socketConnect(connectionAddress, {}, function(err, connectSocket) {
+        socketConnect(connectionAddress, {tls: options.tls && options.tls.client}, function(err, connectSocket) {
             if (err) {
                 return callback(err);
             }
@@ -86,7 +108,12 @@ export function connect(
             host: string,
             port: number
         } | false,
-        isWorker: boolean
+        isWorker: boolean,
+        tls: {
+            key: string;
+            cert: string;
+            ca: string;
+        } | false;
     },
     callback: (err?: Error | null, status?: string) => void
 ): void {
@@ -104,7 +131,16 @@ export function connect(
     } else {
         connectionAddress = `ipc://${tmpdir()}/pipeproc.${options.namespace}`;
     }
-    socketConnect(connectionAddress, {}, function(err, connectSocket) {
+    try {
+        if (options.tls) {
+            options.tls.ca = readFileSync(options.tls.ca, "utf8");
+            options.tls.key = readFileSync(options.tls.key, "utf8");
+            options.tls.cert = readFileSync(options.tls.cert, "utf8");
+        }
+    } catch (e) {
+        return callback(e);
+    }
+    socketConnect(connectionAddress, {tls: options.tls}, function(err, connectSocket) {
         if (err) {
             return callback(err);
         }
@@ -148,7 +184,6 @@ export function shutdown(
     callback: (err?: Error | null, status?: string) => void
 ): void {
     if (client.connectSocket) {
-        //@ts-ignore
         client.connectSocket.close();
     }
     if (client.pipeProcNode) {

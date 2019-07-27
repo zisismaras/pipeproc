@@ -200,6 +200,11 @@ export interface IPipeProcWorkerInitMessage extends IPipeProcMessage {
     type: "worker_init";
     data: {
         address: string;
+        tls: {
+            key: string;
+            cert: string;
+            ca: string;
+        } | false
     };
 }
 
@@ -207,6 +212,18 @@ export interface IPipeProcInitIPCMessage extends IPipeProcMessage {
     type: "init_ipc";
     data: {
         address: string;
+        tls: {
+            server: {
+                key: string;
+                cert: string;
+                ca: string;
+            },
+            client: {
+                key: string;
+                cert: string;
+                ca: string;
+            }
+        } | false
     };
 }
 
@@ -433,12 +450,20 @@ export function prepareReclaimProcMessage(
     };
 }
 
-export function prepareWorkerInitMessage(address: string): IPipeProcWorkerInitMessage {
+export function prepareWorkerInitMessage(
+    address: string,
+    tls: {
+        key: string;
+        cert: string;
+        ca: string;
+    } | false
+): IPipeProcWorkerInitMessage {
     return {
         type: "worker_init",
         msgKey: uuid(),
         data: {
-            address: address
+            address: address,
+            tls: tls
         }
     };
 }

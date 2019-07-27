@@ -22,6 +22,11 @@ export function spawnWorkers(
     activeProcs: IProc[],
     activeSystemProcs: ISystemProc[],
     address: string,
+    clientTLS: {
+        key: string;
+        cert: string;
+        ca: string;
+    } | false,
     callback: (err?: Error | null) => void
 ): void {
     if (!workers) return process.nextTick(callback);
@@ -31,7 +36,7 @@ export function spawnWorkers(
         const worker = {process: fork(`${__dirname}/worker/worker`)};
         series([
             function(cb) {
-                const msg = prepareWorkerInitMessage(address);
+                const msg = prepareWorkerInitMessage(address, clientTLS);
                 const listener = function(e: IPipeProcWorkerInitMessageReply) {
                     if (e.msgKey === msg.msgKey) {
                         worker.process.removeListener("message", listener);

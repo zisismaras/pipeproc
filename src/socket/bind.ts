@@ -1,4 +1,5 @@
 import {createServer, Socket, Server} from "net";
+import {createServer as createTlsServer, TLSSocket} from "tls";
 import debug from "debug";
 import {v4 as uuid} from "uuid";
 import {unlinkSync} from "fs";
@@ -22,14 +23,27 @@ export type ServerSocket = {
 
 export function bind(
     address: string,
-    options: {},
+    options: {
+        tls: {
+            key: string;
+            cert: string;
+            ca: string;
+        } | false
+    },
     callback: (err: Error | null, socketServer?: ServerSocket) => void
 ) {
     //tslint:disable no-any
     const messageListeners: MessageListener<any>[] = [];
     //tslint:enable no-any
-    const socketMap: Map<Socket, Binder> = new Map();
-    const server = createServer();
+    const socketMap: Map<Socket | TLSSocket, Binder> = new Map();
+    const server = options.tls ? createTlsServer({
+        ca: options.tls.ca,
+        key: options.tls.key,
+        cert: options.tls.cert,
+        requestCert: true,
+        rejectUnauthorized: true
+    }) : createServer();
+    const connectionEvent = options.tls ? "secureConnection" : "connection";
     const socketServer: ServerSocket = {
         close: function() {
             if (address.includes("ipc://")) {
@@ -71,7 +85,7 @@ export function bind(
             callback(null, socketServer);
         }
     });
-    server.on("connection", function(socket) {
+    server.on(connectionEvent, function(socket) {
         const binder = createBinder(socket);
         socketMap.set(socket, binder);
         socket.setEncoding("utf8");
@@ -114,7 +128,7 @@ function startServer(server: Server, address: string) {
     }
 }
 
-function createBinder(socket: Socket): Binder {
+function createBinder(socket: Socket | TLSSocket): Binder {
     return {
         id: uuid(),
         send: getSender(socket),

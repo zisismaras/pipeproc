@@ -56,6 +56,11 @@ const d = debug("pipeproc:node");
 let db: LevelDOWN.LevelDown;
 let connectionAddress: string;
 let serverSocket: ServerSocket;
+let clientTLS: {
+    key: string;
+    cert: string;
+    ca: string;
+} | false;
 
 export interface IActiveTopics {
     [key: string]: {
@@ -125,7 +130,7 @@ registerMessage<IPipeProcSystemInitMessage["data"], IPipeProcMessage["data"]>(me
             } else {
                 spawnWorkers(
                     data.options.workers || 0,
-                    activeWorkers, activeProcs, activeSystemProcs, connectionAddress,
+                    activeWorkers, activeProcs, activeSystemProcs, connectionAddress, clientTLS,
                 function(spawnErr) {
                     if (err) {
                         callback((spawnErr && spawnErr.message) || "uknown_error");
@@ -432,7 +437,8 @@ const initIPCListener = function(e: IPipeProcInitIPCMessage) {
     if (e.type === "init_ipc") {
         process.removeListener("message", initIPCListener);
         connectionAddress = e.data.address;
-        initializeMessages(writeBuffer, messageRegistry, connectionAddress, function(err, socket) {
+        clientTLS = e.data.tls && e.data.tls.client;
+        initializeMessages(writeBuffer, messageRegistry, connectionAddress, e.data.tls && e.data.tls.server, function(err, socket) {
             if (err) {
                 if (process && typeof process.send === "function") {
                     process.send(prepareMessage({

@@ -4,6 +4,7 @@ import {
 } from "../common/messages";
 import {IWriteBuffer} from "./writeBuffer";
 import {IWorker} from "./workerManager";
+import {readFileSync} from "fs";
 
 import {bind, ServerSocket} from "../socket/bind";
 
@@ -53,9 +54,23 @@ export function initializeMessages(
     writeBuffer: IWriteBuffer,
     registry: IMessageRegistry,
     address: string,
+    tls: {
+        key: string;
+        cert: string;
+        ca: string;
+    } | false,
     callback: (err: Error | null, socketServer?: ServerSocket) => void
 ) {
-    bind(address, {}, function(err, server) {
+    try {
+        if (tls) {
+            tls.ca = readFileSync(tls.ca, "utf8");
+            tls.key = readFileSync(tls.key, "utf8");
+            tls.cert = readFileSync(tls.cert, "utf8");
+        }
+    } catch (e) {
+        return callback(e);
+    }
+    bind(address, {tls: tls}, function(err, server) {
         if (err) {
             return callback(err);
         }
