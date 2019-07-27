@@ -25,7 +25,7 @@ describe("committing logs", function() {
         }
     });
 
-    it("should commit a simple log and return a logId with sequenceNumber 0 and a correct timestamp", function(done) {
+    it("should commit a simple log and return a logId with sequenceNumber 0", function(done) {
         client.commit({
             topic: "my_topic",
             body: {
@@ -34,7 +34,6 @@ describe("committing logs", function() {
         }).then(function(logId) {
             expect(logId).toBeString();
             expect((<string>logId).split("-")[1]).toEqual("0");
-            expect(parseInt((<string>logId).split("-")[0])).toBeLessThanOrEqual(Date.now());
             done();
         }).catch(function(err) {
             done.fail(err);
@@ -62,7 +61,7 @@ describe("committing logs", function() {
         });
     });
 
-    it("should have the same and correct timestamps when multiple logs are committed", function(done) {
+    it("should have the same timestamps when multiple logs are committed", function(done) {
         client.commit([{
             topic: "my_topic",
             body: {
@@ -78,8 +77,6 @@ describe("committing logs", function() {
             const ts1 = parseInt(logIds[0].split("-")[0]);
             const ts2 = parseInt(logIds[1].split("-")[0]);
             expect(ts1).toEqual(ts2);
-            expect(ts1).toBeLessThanOrEqual(Date.now());
-            expect(ts2).toBeLessThanOrEqual(Date.now());
             done();
         }).catch(function(err) {
             done.fail(err);
