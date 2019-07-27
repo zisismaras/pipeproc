@@ -232,8 +232,16 @@ export interface IPipeProcIPCEstablishedMessage extends IPipeProcMessage {
 }
 
 export interface IPipeProcWorkerInitMessageReply extends IPipeProcMessage {
-    type: "connected" | "connection_failure";
+    type: "worker_connected" | "worker_connection_failure";
     errStatus?: string;
+}
+
+export interface IPipeProcPingMessage extends IPipeProcMessage {
+    type: "ping";
+}
+
+export interface IPipeProcPingMessageReply extends IPipeProcMessage {
+    type: "pong";
 }
 
 export interface IPipeProcRegisterSystemProcsMessage extends IPipeProcMessage {

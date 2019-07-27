@@ -1,6 +1,6 @@
 import {fork as forkProcess, ChildProcess} from "child_process";
 import debug from "debug";
-import {prepareMessage, IPipeProcMessage, IPipeProcIPCEstablishedMessage} from "../common/messages";
+import {prepareMessage, IPipeProcMessage, IPipeProcIPCEstablishedMessage, IPipeProcPingMessageReply} from "../common/messages";
 import {IPipeProcClient} from ".";
 import {tmpdir} from "os";
 import {readFileSync} from "fs";
@@ -51,6 +51,7 @@ export function spawn(
     const initIPCMessage = prepareMessage({type: "init_ipc", data: {address: connectionAddress, tls: options.tls}});
     const ipcEstablishedListener = function(e: IPipeProcIPCEstablishedMessage) {
         if ((e.type !== "ipc_established") || e.msgKey !== initIPCMessage.msgKey) return;
+        d("internal IPC enabled");
         if (e.errStatus) {
             return callback(new Error(e.errStatus));
         }
@@ -74,7 +75,7 @@ export function spawn(
             client.connectSocket = connectSocket;
             if (options.address) {
                 d("using connection address:", options.address);
-            } if (options.tcp) {
+            } else if (options.tcp) {
                 d("tcp connection established on host:", options.tcp.host, "and port:", options.tcp.port);
             } else {
                 d("ipc established under namespace:", options.namespace);
@@ -90,9 +91,16 @@ export function spawn(
             client.connectSocket.onError(function(ipcError) {
                 ipcd("client IPC error:", ipcError);
             });
-            client.connectSocket.send(prepareMessage({type: "system_init", data: {options: options}}), function() {
-                callback(null, "spawned_and_connected");
-            });
+            const systemInitMessage = prepareMessage({type: "system_init", data: {options: options}});
+            client.messageMap[systemInitMessage.msgKey] = function(systemInitReply: IPipeProcMessage) {
+                if (systemInitReply.type === "system_ready") {
+                    callback(null, "spawned_and_connected");
+                } else if (systemInitReply.type === "system_ready_error") {
+                    callback(new Error(e.errStatus));
+                }
+            };
+            d("sending system_init message");
+            sendMessageToNode(client, systemInitMessage);
         });
     };
     (<ChildProcess>client.pipeProcNode).on("message", ipcEstablishedListener);
@@ -114,6 +122,7 @@ export function connect(
             cert: string;
             ca: string;
         } | false;
+        timeout: number
     },
     callback: (err?: Error | null, status?: string) => void
 ): void {
@@ -150,7 +159,7 @@ export function connect(
         client.connectSocket = connectSocket;
         if (options.address) {
             d("using connection address:", options.address);
-        } if (options.tcp) {
+        } else if (options.tcp) {
             d("tcp connection established on host:", options.tcp.host, "and port:", options.tcp.port);
         } else {
             d("ipc established under namespace:", options.namespace);
@@ -173,9 +182,21 @@ export function connect(
                 ipcd("client IPC error:", ipcErr);
             });
         }
-        client.connectSocket.send(prepareMessage({type: "connected", data: {}}), function() {
-            callback(null, "connected");
-        });
+        const pingMessage = prepareMessage({type: "ping", data: {}});
+        let gotPong = false;
+        setTimeout(function() {
+            if (!gotPong) {
+                callback(new Error("connection timed-out"));
+            }
+        }, options.timeout);
+        client.messageMap[pingMessage.msgKey] = function(e: IPipeProcPingMessageReply) {
+            if (e.type === "pong") {
+                gotPong = true;
+                callback(null, "connected");
+            }
+        };
+        d("sending ping message");
+        client.connectSocket.send(pingMessage);
     });
 }
 

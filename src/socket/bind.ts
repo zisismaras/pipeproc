@@ -32,6 +32,36 @@ export function bind(
     },
     callback: (err: Error | null, socketServer?: ServerSocket) => void
 ) {
+    function connectionHandler(socket: Socket | TLSSocket) {
+        d("new connection", socket.address());
+        const binder = createBinder(socket);
+        socketMap.set(socket, binder);
+        socket.setEncoding("utf8");
+        socket.setNoDelay(true);
+        socket.on("end", function() {
+            socketMap.delete(socket);
+        });
+        socket.on("close", function() {
+            socketMap.delete(socket);
+        });
+        socket.on("data", function(chunk: string) {
+            const data = binder.buffer + chunk;
+            const messages = data.split("%EOM%");
+            binder.buffer = messages.pop() || "";
+            messages.forEach(function(msg) {
+                let parsedData: object;
+                try {
+                    parsedData = JSON.parse(msg);
+                } catch (e) {
+                    d("Socket data parsing error:", e, msg);
+                    return;
+                }
+                messageListeners.forEach(function(listener) {
+                    listener(parsedData, binder);
+                });
+            });
+        });
+    }
     //tslint:disable no-any
     const messageListeners: MessageListener<any>[] = [];
     //tslint:enable no-any
@@ -42,8 +72,7 @@ export function bind(
         cert: options.tls.cert,
         requestCert: true,
         rejectUnauthorized: true
-    }) : createServer();
-    const connectionEvent = options.tls ? "secureConnection" : "connection";
+    }, connectionHandler) : createServer(connectionHandler);
     const socketServer: ServerSocket = {
         close: function() {
             if (address.includes("ipc://")) {
@@ -84,35 +113,6 @@ export function bind(
             cbCalled = true;
             callback(null, socketServer);
         }
-    });
-    server.on(connectionEvent, function(socket) {
-        const binder = createBinder(socket);
-        socketMap.set(socket, binder);
-        socket.setEncoding("utf8");
-        socket.setNoDelay(true);
-        socket.on("end", function() {
-            socketMap.delete(socket);
-        });
-        socket.on("close", function() {
-            socketMap.delete(socket);
-        });
-        socket.on("data", function(chunk: string) {
-            const data = binder.buffer + chunk;
-            const messages = data.split("%EOM%");
-            binder.buffer = messages.pop() || "";
-            messages.forEach(function(msg) {
-                let parsedData: object;
-                try {
-                    parsedData = JSON.parse(msg);
-                } catch (e) {
-                    d("Socket data parsing error:", e, msg);
-                    return;
-                }
-                messageListeners.forEach(function(listener) {
-                    listener(parsedData, binder);
-                });
-            });
-        });
     });
 
     startServer(server, address);

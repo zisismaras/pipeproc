@@ -66,12 +66,12 @@ export function connect(
             messageListeners.push(listener);
         },
         close: function() {
-            socket.destroy();
+            options.tls ? socket.destroy() : socket.end();
         },
         send: getSender(socket)
     };
     let cbCalled = false;
-    socket.once("connect", function() {
+    socket.once(options.tls ? "secureConnect" : "connect", function() {
         socket.setNoDelay(true);
         socket.setEncoding("utf8");
         if (!cbCalled) {

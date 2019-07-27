@@ -40,7 +40,7 @@ export function spawnWorkers(
                 const listener = function(e: IPipeProcWorkerInitMessageReply) {
                     if (e.msgKey === msg.msgKey) {
                         worker.process.removeListener("message", listener);
-                        if (e.type === "connected") {
+                        if (e.type === "worker_connected") {
                             d("worker", worker.process.pid, "connected!");
                             activeWorkers.push(worker);
                             cb();

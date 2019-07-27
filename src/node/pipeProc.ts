@@ -19,6 +19,7 @@ import {
     IPipeProcReclaimProcMessage,
     IPipeProcSystemProcMessage,
     IPipeProcWaitForProcsMessage,
+    IPipeProcPingMessage,
 
     IPipeProcLogMessageReply,
     IPipeProcProcMessageReply,
@@ -31,6 +32,7 @@ import {
     IPipeProcResumeProcMessageReply,
     IPipeProcReclaimProcMessageReply,
     IPipeProcSystemProcMessageReply,
+    IPipeProcPingMessageReply,
     prepareMessage
 } from "../common/messages";
 import {commitLog} from "./commitLog";
@@ -162,6 +164,19 @@ registerMessage<IPipeProcSystemInitMessage["data"], IPipeProcMessage["data"]>(me
                 });
             }
         });
+    }
+});
+
+registerMessage<IPipeProcPingMessage["data"], IPipeProcPingMessageReply["data"]>(messageRegistry, {
+    messageType: "ping",
+    replySuccess: "pong",
+    replyError: "ping_error",
+    writeOp: false,
+    listener: function(
+        _data,
+        callback
+    ) {
+        callback();
     }
 });
 

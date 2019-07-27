@@ -78,7 +78,8 @@ export interface IPipeProcClient {
                 ca: string;
             } | false,
             socket?: string,
-            isWorker?: boolean
+            isWorker?: boolean,
+            timeout?: number
         }
     ): Promise<string>;
     shutdown(): Promise<string>;
@@ -297,7 +298,8 @@ export function PipeProc(): IPipeProcClient {
                     namespace: namespace,
                     tcp: (options && options.tcp) || false,
                     isWorker: (options && options.isWorker) || false,
-                    tls: tls
+                    tls: tls,
+                    timeout: (options && options.timeout) || 1000
                 }, function(err, status) {
                     if (err) {
                         reject(err);

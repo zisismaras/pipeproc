@@ -47,7 +47,7 @@ process.on("message", function(e: IPipeProcWorkerInitMessage) {
         pipeProcClient.connect({isWorker: true, socket: e.data.address, tls: e.data.tls})
         .then(function(status) {
             sendMessageToNode(prepareMessage({
-                type: "connected",
+                type: "worker_connected",
                 msgKey: e.msgKey,
                 data: {
                     status: status
@@ -56,7 +56,7 @@ process.on("message", function(e: IPipeProcWorkerInitMessage) {
         })
         .catch(function(err) {
             sendMessageToNode(prepareMessage({
-                type: "connection_error",
+                type: "worker_connection_failure",
                 msgKey: e.msgKey,
                 errStatus: err.message
             }));
