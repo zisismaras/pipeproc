@@ -175,7 +175,9 @@ connect(
             ca: string;
         } | false,
         //use a socket address directly
-        socket?: string
+        socket?: string,
+        //specify a connection timeout, defaults to 1000ms
+        timeout?: number
     }
 ): Promise<string>;
 ```
