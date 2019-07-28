@@ -199,14 +199,31 @@ export interface IPipeProcSystemInitMessage extends IPipeProcMessage {
 export interface IPipeProcWorkerInitMessage extends IPipeProcMessage {
     type: "worker_init";
     data: {
-        namespace: string;
+        address: string;
+        tls: {
+            key: string;
+            cert: string;
+            ca: string;
+        } | false
     };
 }
 
 export interface IPipeProcInitIPCMessage extends IPipeProcMessage {
     type: "init_ipc";
     data: {
-        namespace: string
+        address: string;
+        tls: {
+            server: {
+                key: string;
+                cert: string;
+                ca: string;
+            },
+            client: {
+                key: string;
+                cert: string;
+                ca: string;
+            }
+        } | false
     };
 }
 
@@ -215,8 +232,16 @@ export interface IPipeProcIPCEstablishedMessage extends IPipeProcMessage {
 }
 
 export interface IPipeProcWorkerInitMessageReply extends IPipeProcMessage {
-    type: "connected" | "connection_failure";
+    type: "worker_connected" | "worker_connection_failure";
     errStatus?: string;
+}
+
+export interface IPipeProcPingMessage extends IPipeProcMessage {
+    type: "ping";
+}
+
+export interface IPipeProcPingMessageReply extends IPipeProcMessage {
+    type: "pong";
 }
 
 export interface IPipeProcRegisterSystemProcsMessage extends IPipeProcMessage {
@@ -433,12 +458,20 @@ export function prepareReclaimProcMessage(
     };
 }
 
-export function prepareWorkerInitMessage(namespace: string): IPipeProcWorkerInitMessage {
+export function prepareWorkerInitMessage(
+    address: string,
+    tls: {
+        key: string;
+        cert: string;
+        ca: string;
+    } | false
+): IPipeProcWorkerInitMessage {
     return {
         type: "worker_init",
         msgKey: uuid(),
         data: {
-            namespace: namespace
+            address: address,
+            tls: tls
         }
     };
 }

@@ -103,13 +103,43 @@ npm install --save pipeproc
 
 Spawn the node and connect to it.  
 If there is a need to spawn multiple nodes on the same host you can use the `namespace` option with a custom name.  
-If a custom `namespace` is used, all clients that will `connect()` to it will need to provide it.
+If a custom `namespace` is used, all clients that will `connect()` to it will need to provide it.  
+The node can also use TCP connections instead by setting the host and the port in the `tcp` settings.  
+Clients (local and remote) can then `connect()` to it by providing the same host and port.  
+A socket address can also be used instead of a namespace or tcp options, for example:
+
+- `ipc:///tmp/mysocket`
+- `tcp://127.0.0.1:9999`
+
+TLS is also available when using TCP. A cert, key, and ca should be provided for both server and client.  
+Any client that also needs to `connect()` should provide its client keys.  
+If the node is spawned with TLS, only secure connections will be allowed.
 
 ```typescript
 spawn(
     options?: {
         //use a different ipc namespace
         namespace?: string,
+        //use a tcp socket
+        tcp?: {
+            host: string,
+            port: number
+        },
+        //tls settings
+        tls?: {
+            server: {
+                key: string;
+                cert: string;
+                ca: string;
+            },
+            client: {
+                key: string;
+                cert: string;
+                ca: string;
+            }
+        }
+        //use a socket address directly
+        socket?: string,
         //use an in-memory store instead of the disk adapter
         memory?: boolean,
         //set the location of the underlying store (if memory is false)
@@ -126,13 +156,28 @@ spawn(
 
 Connect to an already spawned node.  
 
-Usecase: Connect to the same PipeProc instance from a different process (eg. electron renderer)
+Usecase: Connect to the same PipeProc instance from a different process (eg. electron renderer) or to a remote instance (only when using TCP)
 
 ```typescript
 connect(
     options?: {
         //use a different ipc namespace
-        namespace?: string
+        namespace?: string,
+        //connect to a tcp socket
+        tcp?: {
+            host: string,
+            port: number
+        },
+        //tls settings
+        tls?: {
+            key: string;
+            cert: string;
+            ca: string;
+        } | false,
+        //use a socket address directly
+        socket?: string,
+        //specify a connection timeout, defaults to 1000ms
+        timeout?: number
     }
 ): Promise<string>;
 ```

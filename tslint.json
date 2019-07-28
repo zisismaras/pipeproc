@@ -4,9 +4,6 @@
         "tslint-microsoft-contrib"
     ],
     "rules": {
-        "max-line-length": {
-            "options": [120]
-        },
         "new-parens": true,
         "no-arg": true,
         "no-bitwise": true,
@@ -57,7 +54,6 @@
         "curly": false,
         "ordered-imports": false,
         "align": false,
-        "cyclomatic-complexity": [true, 22],
         "mocha-no-side-effect-code": false,
         "variable-name": [true, "ban-keywords", "check-format", "allow-leading-underscore"],
         "max-func-body-length": false,
@@ -73,7 +69,9 @@
         "promise-function-async": false,
         "no-floating-promises": false,
         "no-string-based-set-immediate": false,
-        "match-default-export-name": false
+        "match-default-export-name": false,
+        "cyclomatic-complexity": false,
+        "max-line-length": false
     },
     "jsRules": {
         "max-line-length": {

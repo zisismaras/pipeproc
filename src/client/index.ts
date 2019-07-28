@@ -19,6 +19,9 @@ import {
 } from "./liveproc";
 import {IProc} from "../node/proc";
 import {ChildProcess} from "child_process";
+import {ConnectSocket} from "../socket/connect";
+import {resolve as pathResolve} from "path";
+import {existsSync} from "fs";
 
 export interface ICommitLog {
     topic: string;
@@ -26,9 +29,8 @@ export interface ICommitLog {
 }
 
 export interface IPipeProcClient {
-    namespace: string;
     pipeProcNode?: ChildProcess | {};
-    ipc?: object;
+    connectSocket?: ConnectSocket;
     messageMap: {
         //tslint:disable no-any
         [key: string]: (e: any) => void;
@@ -40,6 +42,23 @@ export interface IPipeProcClient {
     spawn(
         options?: {
             namespace?: string,
+            tcp?: {
+                host: string,
+                port: number
+            },
+            tls?: {
+                server: {
+                    key: string;
+                    cert: string;
+                    ca: string;
+                },
+                client: {
+                    key: string;
+                    cert: string;
+                    ca: string;
+                }
+            }
+            socket?: string,
             memory?: boolean,
             location?: string,
             workers?: number,
@@ -49,7 +68,18 @@ export interface IPipeProcClient {
     connect(
         options?: {
             namespace?: string,
-            isWorker?: boolean
+            tcp?: {
+                host: string,
+                port: number
+            },
+            tls?: {
+                key: string;
+                cert: string;
+                ca: string;
+            } | false,
+            socket?: string,
+            isWorker?: boolean,
+            timeout?: number
         }
     ): Promise<string>;
     shutdown(): Promise<string>;
@@ -136,11 +166,20 @@ export interface IPipeProcClient {
 export function PipeProc(): IPipeProcClient {
 //tslint:enable function-name
     const pipeProcClient: IPipeProcClient = {
-        namespace: "default",
         messageMap: {},
         spawn: function(options) {
+            let namespace = "default";
             if (options && options.namespace && typeof options.namespace === "string") {
-                this.namespace = options.namespace;
+                namespace = options.namespace;
+            }
+            let address = "";
+            if (options && options.socket && typeof options.socket === "string") {
+                address = options.socket;
+            }
+            if (options && options.tcp) {
+                if (!options.tcp.host || !options.tcp.port) {
+                    return Promise.reject(new Error("tcp connection needs a host and a port"));
+                }
             }
             let workers: number;
             if (options && typeof options.workers === "number" && options.workers >= 0) {
@@ -148,12 +187,65 @@ export function PipeProc(): IPipeProcClient {
             } else {
                 workers = 1;
             }
+            let tls: {
+                server: {
+                    key: string;
+                    cert: string;
+                    ca: string;
+                },
+                client: {
+                    key: string;
+                    cert: string;
+                    ca: string;
+                }
+            } | false;
+            if (options && options.tls) {
+                if (!options.tls.server || !options.tls.client) {
+                    return Promise.reject(new Error("tls options require a server and client configuration"));
+                }
+                if (!existsSync(options.tls.server.ca)) {
+                    return Promise.reject(new Error("tls options require a server ca"));
+                }
+                if (!existsSync(options.tls.server.cert)) {
+                    return Promise.reject(new Error("tls options require a server cert"));
+                }
+                if (!existsSync(options.tls.server.key)) {
+                    return Promise.reject(new Error("tls options require a server key"));
+                }
+                if (!existsSync(options.tls.client.ca)) {
+                    return Promise.reject(new Error("tls options require a client ca"));
+                }
+                if (!existsSync(options.tls.client.cert)) {
+                    return Promise.reject(new Error("tls options require a client cert"));
+                }
+                if (!existsSync(options.tls.client.key)) {
+                    return Promise.reject(new Error("tls options require a client key"));
+                }
+                tls = {
+                    server: {
+                        ca: pathResolve(options.tls.server.ca),
+                        cert: pathResolve(options.tls.server.cert),
+                        key: pathResolve(options.tls.server.key)
+                    },
+                    client: {
+                        ca: pathResolve(options.tls.client.ca),
+                        cert: pathResolve(options.tls.client.cert),
+                        key: pathResolve(options.tls.client.key)
+                    }
+                };
+            } else {
+                tls = false;
+            }
             return new Promise(function(resolve, reject) {
                 spawn(pipeProcClient, {
+                    address: address,
+                    namespace: namespace,
+                    tcp: (options && options.tcp) || false,
                     memory: (options && options.memory) || false,
                     location: (options && options.location) || "./pipeproc_data",
                     workers: workers,
-                    gc: (options && options.gc) || undefined
+                    gc: (options && options.gc) || undefined,
+                    tls: tls
                 }, function(err, status) {
                     if (err) {
                         reject(err);
@@ -164,12 +256,50 @@ export function PipeProc(): IPipeProcClient {
             });
         },
         connect: function(options) {
+            let namespace = "default";
             if (options && options.namespace && typeof options.namespace === "string") {
-                this.namespace = options.namespace;
+                namespace = options.namespace;
+            }
+            let address = "";
+            if (options && options.socket && typeof options.socket === "string") {
+                address = options.socket;
+            }
+            if (options && options.tcp) {
+                if (!options.tcp.host || !options.tcp.port) {
+                    return Promise.reject(new Error("tcp connection needs a host and a port"));
+                }
+            }
+            let tls: {
+                key: string;
+                cert: string;
+                ca: string;
+            } | false;
+            if (options && options.tls) {
+                if (!existsSync(options.tls.ca)) {
+                    return Promise.reject(new Error("tls connect options require a client ca"));
+                }
+                if (!existsSync(options.tls.cert)) {
+                    return Promise.reject(new Error("tls connect options require a client cert"));
+                }
+                if (!existsSync(options.tls.key)) {
+                    return Promise.reject(new Error("tls connect options require a client key"));
+                }
+                tls = {
+                    ca: pathResolve(options.tls.ca),
+                    cert: pathResolve(options.tls.cert),
+                    key: pathResolve(options.tls.key)
+                };
+            } else {
+                tls = false;
             }
             return new Promise(function(resolve, reject) {
                 connect(pipeProcClient, {
-                    isWorker: (options && options.isWorker) || false
+                    address: address,
+                    namespace: namespace,
+                    tcp: (options && options.tcp) || false,
+                    isWorker: (options && options.isWorker) || false,
+                    tls: tls,
+                    timeout: (options && options.timeout) || 1000
                 }, function(err, status) {
                     if (err) {
                         reject(err);

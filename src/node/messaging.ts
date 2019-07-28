@@ -4,12 +4,9 @@ import {
 } from "../common/messages";
 import {IWriteBuffer} from "./writeBuffer";
 import {IWorker} from "./workerManager";
-import {tmpdir} from "os";
-import debug from "debug";
+import {readFileSync} from "fs";
 
-//@ts-ignore
-import {Server} from "@crussell52/socket-ipc";
-import {xpipe} from "../common/xpipe";
+import {bind, ServerSocket} from "../socket/bind";
 
 export interface IMessageRegistry {
     [key: string]: {
@@ -56,54 +53,69 @@ export function registerMessage<T, U>(registry: IMessageRegistry, newMessage: me
 export function initializeMessages(
     writeBuffer: IWriteBuffer,
     registry: IMessageRegistry,
-    namespace: string
+    address: string,
+    tls: {
+        key: string;
+        cert: string;
+        ca: string;
+    } | false,
+    callback: (err: Error | null, socketServer?: ServerSocket) => void
 ) {
-    const server = new Server({socketFile: xpipe(`${tmpdir()}/pipeproc.${namespace || "default"}`)});
-    const d = debug("pipeproc:ipc:node");
-    server.on("error", function(err: Error) {
-        d("node IPC error:", err);
-    });
-    server.on("message", function(msg: IPipeProcMessage, _topic: string, clientId: string) {
-        if (!registry[msg.type]) return;
-        if (registry[msg.type].writeOp) {
-            writeBuffer.push(function(cb) {
+    try {
+        if (tls) {
+            tls.ca = readFileSync(tls.ca, "utf8");
+            tls.key = readFileSync(tls.key, "utf8");
+            tls.cert = readFileSync(tls.cert, "utf8");
+        }
+    } catch (e) {
+        return callback(e);
+    }
+    bind(address, {tls: tls}, function(err, server) {
+        if (err) {
+            return callback(err);
+        }
+        if (!server) {
+            return callback(new Error("failed_to_create_server"));
+        }
+        server.onMessage<IPipeProcMessage>(function(msg, binder) {
+            if (!registry[msg.type]) return;
+            if (registry[msg.type].writeOp) {
+                writeBuffer.push(function(cb) {
+                    registry[msg.type].listener(msg.data, function(errStatus, reply) {
+                        if (errStatus) {
+                            binder.send(prepareMessage({
+                                type: registry[msg.type].replyError,
+                                msgKey: msg.msgKey,
+                                errStatus: errStatus
+                            }), cb);
+                        } else {
+                            binder.send(prepareMessage({
+                                type: registry[msg.type].replySuccess,
+                                msgKey: msg.msgKey,
+                                data: reply
+                            }), cb);
+                        }
+                    });
+                });
+            } else {
                 registry[msg.type].listener(msg.data, function(errStatus, reply) {
                     if (errStatus) {
-                        server.send("message", prepareMessage({
+                        binder.send(prepareMessage({
                             type: registry[msg.type].replyError,
                             msgKey: msg.msgKey,
                             errStatus: errStatus
-                        }), clientId);
-                        setImmediate(cb);
+                        }));
                     } else {
-                        server.send("message", prepareMessage({
+                        binder.send(prepareMessage({
                             type: registry[msg.type].replySuccess,
                             msgKey: msg.msgKey,
                             data: reply
-                        }), clientId);
-                        setImmediate(cb);
+                        }));
                     }
                 });
-            });
-        } else {
-            registry[msg.type].listener(msg.data, function(errStatus, reply) {
-                if (errStatus) {
-                    server.send("message", prepareMessage({
-                        type: registry[msg.type].replyError,
-                        msgKey: msg.msgKey,
-                        errStatus: errStatus
-                    }), clientId);
-                } else {
-                    server.send("message", prepareMessage({
-                        type: registry[msg.type].replySuccess,
-                        msgKey: msg.msgKey,
-                        data: reply
-                    }), clientId);
-                }
-            });
-        }
-    });
-    server.listen();
+            }
+        });
 
-    return server;
+        callback(null, server);
+    });
 }
