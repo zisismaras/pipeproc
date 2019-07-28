@@ -30,6 +30,7 @@ export function destroyProc(
             keys.push(key);
             asyncImmediate(next);
         });
+        //@ts-ignore
     }, function(status: {message?: string} | string | undefined) {
         if (!status || typeof status === "string") {
             iterator.end(function(iteratorEndErr) {

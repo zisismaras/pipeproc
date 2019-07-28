@@ -53,6 +53,7 @@ export function getRange(
     const sdo: Sdo = {isStartIdSearch: false, isEndIdSearch: false, startId: "", endId: ""};
     const results: IRangeResult[] = [];
     series([
+        //@ts-ignore
         function(cb) {
             if (start.match(/:[0-9]+/)) {
                 sdo.isStartIdSearch = true;
@@ -73,6 +74,7 @@ export function getRange(
                 cb();
             }
         },
+        //@ts-ignore
         function(cb) {
             if (end.match(/:[0-9]+/)) {
                 sdo.isEndIdSearch = true;
@@ -93,6 +95,7 @@ export function getRange(
                 cb();
             }
         },
+        //@ts-ignore
         function(cb) {
             const iteratorOptions = getIteratorOptions(
                 prefix,
@@ -113,6 +116,7 @@ export function getRange(
                     }
                     asyncImmediate(next);
                 });
+                //@ts-ignore
             }, function(status: {message?: string} | string | undefined) {
                 if (!status || typeof status === "string") {
                     iterator.end(cb);

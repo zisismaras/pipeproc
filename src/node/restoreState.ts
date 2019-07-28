@@ -47,6 +47,7 @@ export function restoreState(
                     }
                     next();
                 });
+                //@ts-ignore
             }, function(status: {message?: string} | string | undefined) {
                 if (!status || typeof status === "string") {
                     iterator.end(cb);
@@ -80,6 +81,7 @@ export function restoreState(
                     }
                     next();
                 });
+                //@ts-ignore
             }, function(status: {message?: string} | string | undefined) {
                 if (!status || typeof status === "string") {
                     iterator.end(cb);
@@ -138,6 +140,7 @@ export function restoreState(
                     }
                     next();
                 });
+                //@ts-ignore
             }, function(status: {message?: string} | string | undefined) {
                 if (!status || typeof status === "string") {
                     iterator.end(cb);
@@ -185,6 +188,7 @@ export function restoreState(
                     }
                     next();
                 });
+                //@ts-ignore
             }, function(status: {message?: string} | string | undefined) {
                 if (!status || typeof status === "string") {
                     iterator.end(cb);
@@ -206,6 +210,7 @@ export function restoreState(
         }
     ], function(err) {
         if (err) {
+            //@ts-ignore
             callback(err);
         } else {
             callback(null);
