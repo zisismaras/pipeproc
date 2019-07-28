@@ -77,10 +77,50 @@ describe("spawning a node using TLS", function() {
             client2.connect({
                 socket: address,
                 timeout: 50
-            }).then(function(status) {
+            }).then(function() {
                 done.fail("it should not be able to connect");
             }).catch(function(err) {
+                expect(err).toBeInstanceOf(Error);
                 expect(err.message).toBe("connection timed-out");
+                done();
+            });
+        });
+    });
+
+    it("shouldn't be able to use tls with ipc", function(done) {
+        client.spawn({
+            memory: true,
+            workers: 0,
+            tls: tlsSettings
+        }).then(function() {
+            done.fail("shouldn't be able to use tls with ipc");
+        }).catch(function(err) {
+            expect(err).toBeInstanceOf(Error);
+            expect(err.message).toMatch("Invalid connection address");
+            done();
+        });
+    });
+
+    it("shouldn't be able to connect with an invalid certificate", function(done) {
+        client.spawn({
+            memory: true,
+            workers: 0,
+            socket: address,
+            tls: tlsSettings
+        }).then(function() {
+            const client2 = PipeProc();
+            client2.connect({
+                socket: address,
+                timeout: 50,
+                tls: {
+                    ca: pathJoin(__dirname, "/keys/ca.pem"),
+                    key: pathJoin(__dirname, "/keys/client-key.pem"),
+                    cert: pathJoin(__dirname, "/keys/invalid-client-cert.pem")
+                }
+            }).then(function() {
+                done.fail("it should not be able to connect");
+            }).catch(function(err) {
+                expect(err.code).toBe("ECONNRESET");
                 done();
             });
         });
