@@ -44,6 +44,7 @@ export function proc(
         if (procErr) return callback(procErr);
         if (!myProc) return callback(new Error("invalid_proc"));
         if (myProc.status === "disabled") return callback(new Error("proc_is_disabled"));
+        if (!topicHasNewLogs(activeTopics, myProc)) return callback();
         checkClaimTimeout(db, activeProcs, myProc, function(err) {
             if (err) return callback(err);
             if (myProc.status === "disabled") return callback(new Error("proc_is_disabled"));
@@ -70,6 +71,135 @@ export function proc(
             });
         });
     });
+}
+
+export function getAvailableProc(
+    db: LevelDOWN.LevelDown,
+    activeProcs: IProc[],
+    activeTopics: IActiveTopics,
+    procList: {
+        name: string,
+        topic: string,
+        offset: string,
+        count: number,
+        maxReclaims: number,
+        reclaimTimeout: number,
+        onMaxReclaimsReached: string
+    }[],
+    callback: (err?: Error|null, result?: {
+        procName: string,
+        log?: IRangeResult | IRangeResult[]
+    }) => void
+): void {
+    /*
+        iterate procList
+            if a proc is found that does not exist in activeProcs
+                we use it
+            else
+                we pick the best active proc and use that
+                best = max(proc.topic.currentTone - (proc.lastAckedRange[1] || 0))
+        return the name of the proc that we used and its result
+    */
+   //@ts-ignore
+   let newProc;
+   for (const pr of procList) {
+        const procExists = !!activeProcs.find(ap => pr.name === ap.name);
+        if (!procExists) {
+            newProc = pr;
+            break;
+        }
+   }
+   if (newProc) {
+        proc(db, activeProcs, activeTopics, {
+            name: newProc.name,
+            topic: newProc.topic,
+            maxReclaims: newProc.maxReclaims,
+            reclaimTimeout: newProc.reclaimTimeout,
+            onMaxReclaimsReached: newProc.onMaxReclaimsReached,
+            offset: newProc.offset,
+            count: newProc.count
+        }, function(err, log) {
+            if (err) {
+                callback(err);
+            } else {
+                callback(null, {
+                    log: log,
+                    //@ts-ignore
+                    procName: newProc.name
+                });
+            }
+        });
+   } else {
+        const myProc = getBestAvailableProc(
+            activeTopics,
+            //map the procList to actual procs
+            procList
+                .filter(pr => activeProcs.find(ap => ap.name === pr.name && ap.status === "active"))
+                .map(pr => <IProc>activeProcs.find(ap => ap.name === pr.name))
+        );
+        if (!myProc) {
+            return callback();
+        } else {
+            proc(db, activeProcs, activeTopics, {
+                name: myProc.name,
+                topic: myProc.topic,
+                maxReclaims: myProc.maxReclaims,
+                reclaimTimeout: myProc.reclaimTimeout,
+                onMaxReclaimsReached: myProc.onMaxReclaimsReached,
+                offset: myProc.offset,
+                //count isn't available on the Proc so we get it from the procList
+                count: procList.find(pr => myProc.name === pr.name)!.count
+            }, function(err, log) {
+                if (err) {
+                    callback(err);
+                } else {
+                    callback(null, {
+                        log: log,
+                        procName: myProc.name
+                    });
+                }
+            });
+        }
+   }
+}
+
+function getBestAvailableProc(activeTopics: IActiveTopics, procList: IProc[]) {
+    const procsWithWork = procList.filter(p => topicHasNewLogs(activeTopics, p));
+    if (procsWithWork.length === 0) {
+        return null;
+    }
+    let bestProc = procsWithWork[0];
+    for (let i = 1; i < procsWithWork.length; i += 1) {
+        const currentProc = procsWithWork[i];
+        let myLastAck = 0;
+        if (currentProc.lastAckedRange) {
+            myLastAck = parseInt(currentProc.lastAckedRange.split("-")[1]);
+        }
+        const myTopic = activeTopics[currentProc.topic];
+        const bestProcLastAck = parseInt(bestProc.lastAckedRange.split("-")[1]);
+        const bestProcTopic = activeTopics[bestProc.topic];
+        if (myTopic.currentTone - myLastAck > bestProcTopic.currentTone - bestProcLastAck) {
+            bestProc = currentProc;
+        }
+    }
+
+    return bestProc;
+}
+
+function topicHasNewLogs(activeTopics: IActiveTopics, myProc: IProc) {
+    const myTopic = activeTopics[myProc.topic];
+    //the topic does not exist yet
+    if (!myTopic) return false;
+    //the proc has not be used yet
+    if (!myProc.lastAckedRange) return true;
+    //get the last acked id
+    const lastAck = parseInt(myProc.lastAckedRange.split("-")[1]);
+    //check if we have new logs after our lastAck
+    if (myTopic.currentTone > lastAck) {
+        return true;
+    } else {
+        return false;
+    }
 }
 
 function getProc(

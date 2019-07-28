@@ -11,7 +11,8 @@ import {
     disableProc,
     resumeProc,
     reclaimProc,
-    waitForProcs
+    waitForProcs,
+    availableProc
 } from "./actions";
 import {
     createLiveProc,
@@ -115,6 +116,20 @@ export interface IPipeProcClient {
             onMaxReclaimsReached?: string
         }
     ): Promise<null | {id: string, body: object} | {id: string, body: object}[]>;
+    availableProc(
+        procList: {
+            name: string,
+            topic: string,
+            offset: string,
+            count?: number,
+            maxReclaims?: number,
+            reclaimTimeout?: number,
+            onMaxReclaimsReached?: string
+        }[]
+    ): Promise<null | {
+        procName?: string,
+        log?: {id: string, body: object} | {id: string, body: object}[]
+    }>;
     systemProc(
         options: {
             name: string,
@@ -390,6 +405,17 @@ export function PipeProc(): IPipeProcClient {
         proc: function(topic, options) {
             return new Promise(function(resolve, reject) {
                 proc(pipeProcClient, topic, options, function(err, result) {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(result);
+                    }
+                });
+            });
+        },
+        availableProc: function(procList) {
+            return new Promise(function(resolve, reject) {
+                availableProc(pipeProcClient, procList, function(err, result) {
                     if (err) {
                         reject(err);
                     } else {

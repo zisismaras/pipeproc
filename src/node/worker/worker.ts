@@ -40,12 +40,43 @@ type ProcessorFn = (
     ) => void
 ) => Promise<ICommitLog | ICommitLog[]> | void;
 
-const processorMap: IProcessorMap = {};
+let procList: IProc[] = [];
+let systemProcList: ISystemProc[] = [];
 
 process.on("message", function(e: IPipeProcWorkerInitMessage) {
     if (e.type === "worker_init") {
         pipeProcClient.connect({isWorker: true, socket: e.data.address, tls: e.data.tls})
         .then(function(status) {
+            const strategy = new ExponentialStrategy({
+                randomisationFactor: 0.5,
+                initialDelay: 10,
+                maxDelay: 3000,
+                factor: 2
+            });
+            forever(function(next) {
+                pipeProcClient.availableProc(procList)
+                .then(function(result) {
+                    if (result && result.procName && result.log) {
+                        const myProc = procList.find(pr => pr.name === result.procName);
+                        procExec(<IProc>myProc, result.log, function(err) {
+                            if (err) {
+                                d(err);
+                                setTimeout(next, strategy.next());
+                            } else {
+                                strategy.reset();
+                                setImmediate(next);
+                            }
+                        });
+                    } else {
+                        d("no results");
+                        setTimeout(next, strategy.next());
+                    }
+                })
+                .catch(function(err) {
+                    d(err);
+                    setTimeout(next, strategy.next());
+                });
+            }, function() {});
             sendMessageToNode(prepareMessage({
                 type: "worker_connected",
                 msgKey: e.msgKey,
@@ -67,59 +98,33 @@ process.on("message", function(e: IPipeProcWorkerInitMessage) {
 process.on("message", function(e: IPipeProcRegisterSystemProcsMessage) {
     if (e.type === "register_system_procs") {
         d("registering...");
-        let constructionError: Error | null = null;
-        e.data.procs.forEach(myProc => {
-            if (constructionError) return;
-            const err = constructProcExec(myProc, e.data.systemProcs);
-            if (err) constructionError = err;
-        });
-        if (constructionError) {
-            sendMessageToNode(prepareMessage({
-                type: "register_system_proc_error",
-                msgKey: e.msgKey,
-                data: {
-                    status: "error"
-                },
-                errStatus: (constructionError && (<Error>constructionError).message) || "proc_construction_error"
-            }));
-        } else {
-            sendMessageToNode(prepareMessage({
-                type: "register_system_proc_ok",
-                msgKey: e.msgKey,
-                data: {
-                    status: "ok"
-                }
-            }));
-            e.data.procs.forEach(myProc => {
-                if (myProc.status !== "active") return;
-                const strategy = new ExponentialStrategy({
-                    randomisationFactor: 0.5,
-                    initialDelay: 10,
-                    maxDelay: 3000,
-                    factor: 2
-                });
-                forever(function(next) {
-                    if (myProc.status !== "active") return next(new Error("stop"));
-                    processorMap[myProc.name](function(err) {
-                        if (err) {
-                            d(err);
-                            setTimeout(next, strategy.next());
-                        } else {
-                            strategy.reset();
-                            setImmediate(next);
-                        }
-                    });
-                }, function() {});
-            });
-        }
+        procList = procList.concat(e.data.procs);
+        systemProcList = systemProcList.concat(e.data.systemProcs);
+        sendMessageToNode(prepareMessage({
+            type: "register_system_proc_ok",
+            msgKey: e.msgKey,
+            data: {
+                status: "ok"
+            }
+        }));
     }
 });
 
-function constructProcExec(myProc: IProc, systemProcs: ISystemProc[]): Error | void {
-    d("constructing", myProc.name);
-    const mySystemProc = systemProcs.find(sp => sp.name === myProc.name);
+function procExec(
+    myProc: IProc,
+    myLog: {
+        id: string;
+        body: object;
+    } | {
+        id: string;
+        body: object;
+    }[],
+    callback: (err?: Error | string | null) => void
+): void {
+    d("executing", myProc.name);
+    const mySystemProc = systemProcList.find(sp => sp.name === myProc.name);
     if (!mySystemProc) {
-        return new Error("invalid_procs_passed");
+        return callback(new Error("invalid_procs_passed"));
     }
     let processorFn: ProcessorFn;
     try {
@@ -139,189 +144,168 @@ function constructProcExec(myProc: IProc, systemProcs: ISystemProc[]): Error | v
             //tslint:enable
         }
     } catch (e) {
-        return e;
+        return callback(e);
     }
-    processorMap[myProc.name] = function(callback) {
-        let myLog: {
-            id: string;
-            body: object;
-        } | {
-            id: string;
-            body: object;
-        }[];
-        let myCommitLog: ICommitLog | ICommitLog[];
-        let shouldCommit = false;
-        let processorErr: Error;
-        let ackCommitErr: Error;
-        series([
-            function(cb) {
-                pipeProcClient.proc(myProc.topic, myProc)
-                .then(function(log) {
-                    if ((log && !Array.isArray(log)) || (Array.isArray(log) && log.length > 0)) {
-                        myLog = log;
-                        cb();
-                    } else {
-                        cb("no_results");
-                    }
-                })
-                .catch(cb);
-            },
-            function(cb) {
-                try {
-                    const myProcessorPromise = processorFn(myLog, function(err, data) {
-                        if (err) {
-                            processorErr = err;
-                        } else if (
-                            data && (
-                                (Array.isArray(mySystemProc.to) && mySystemProc.to.length > 0) ||
-                                mySystemProc.to
-                            )) {
-                            if (Array.isArray(mySystemProc.to) && mySystemProc.to.length > 0) {
-                                myCommitLog = [];
-                                mySystemProc.to.forEach(topic => {
-                                    if (Array.isArray(data) && data.length > 0) {
-                                        shouldCommit = true;
-                                        data.forEach(dataBody => {
-                                            (<ICommitLog[]>myCommitLog).push({
-                                                topic: topic,
-                                                body: dataBody
-                                            });
-                                        });
-                                    } else {
-                                        shouldCommit = true;
-                                        (<ICommitLog[]>myCommitLog).push({
-                                            topic: topic,
-                                            body: data
-                                        });
-                                    }
-                                });
-                            } else {
+    let myCommitLog: ICommitLog | ICommitLog[];
+    let shouldCommit = false;
+    let processorErr: Error;
+    let ackCommitErr: Error;
+    series([
+        function(cb) {
+            try {
+                const myProcessorPromise = processorFn(myLog, function(err, data) {
+                    if (err) {
+                        processorErr = err;
+                    } else if (
+                        data && (
+                            (Array.isArray(mySystemProc.to) && mySystemProc.to.length > 0) ||
+                            mySystemProc.to
+                        )) {
+                        if (Array.isArray(mySystemProc.to) && mySystemProc.to.length > 0) {
+                            myCommitLog = [];
+                            mySystemProc.to.forEach(topic => {
                                 if (Array.isArray(data) && data.length > 0) {
-                                    myCommitLog = [];
                                     shouldCommit = true;
                                     data.forEach(dataBody => {
                                         (<ICommitLog[]>myCommitLog).push({
-                                            topic: <string>mySystemProc.to,
+                                            topic: topic,
                                             body: dataBody
                                         });
                                     });
                                 } else {
                                     shouldCommit = true;
-                                    myCommitLog = {
-                                        topic: <string>mySystemProc.to,
+                                    (<ICommitLog[]>myCommitLog).push({
+                                        topic: topic,
                                         body: data
-                                    };
+                                    });
                                 }
+                            });
+                        } else {
+                            if (Array.isArray(data) && data.length > 0) {
+                                myCommitLog = [];
+                                shouldCommit = true;
+                                data.forEach(dataBody => {
+                                    (<ICommitLog[]>myCommitLog).push({
+                                        topic: <string>mySystemProc.to,
+                                        body: dataBody
+                                    });
+                                });
+                            } else {
+                                shouldCommit = true;
+                                myCommitLog = {
+                                    topic: <string>mySystemProc.to,
+                                    body: data
+                                };
+                            }
+                        }
+                    }
+                    cb();
+                });
+                if (myProcessorPromise instanceof Promise) {
+                    myProcessorPromise.then(function(data) {
+                        if (!data) return cb();
+                        if (Array.isArray(mySystemProc.to) && mySystemProc.to.length > 0) {
+                            myCommitLog = [];
+                            mySystemProc.to.forEach(topic => {
+                                if (Array.isArray(data) && data.length > 0) {
+                                    shouldCommit = true;
+                                    data.forEach(dataBody => {
+                                        (<ICommitLog[]>myCommitLog).push({
+                                            topic: topic,
+                                            body: dataBody
+                                        });
+                                    });
+                                } else {
+                                    shouldCommit = true;
+                                    (<ICommitLog[]>myCommitLog).push({
+                                        topic: topic,
+                                        body: data
+                                    });
+                                }
+                            });
+                        } else {
+                            if (Array.isArray(data) && data.length > 0) {
+                                myCommitLog = [];
+                                shouldCommit = true;
+                                data.forEach(dataBody => {
+                                    (<ICommitLog[]>myCommitLog).push({
+                                        topic: <string>mySystemProc.to,
+                                        body: dataBody
+                                    });
+                                });
+                            } else {
+                                shouldCommit = true;
+                                myCommitLog = {
+                                    topic: <string>mySystemProc.to,
+                                    body: data
+                                };
                             }
                         }
                         cb();
+                    }).catch(function(err) {
+                        processorErr = err;
+                        cb();
                     });
-                    if (myProcessorPromise instanceof Promise) {
-                        myProcessorPromise.then(function(data) {
-                            if (!data) return cb();
-                            if (Array.isArray(mySystemProc.to) && mySystemProc.to.length > 0) {
-                                myCommitLog = [];
-                                mySystemProc.to.forEach(topic => {
-                                    if (Array.isArray(data) && data.length > 0) {
-                                        shouldCommit = true;
-                                        data.forEach(dataBody => {
-                                            (<ICommitLog[]>myCommitLog).push({
-                                                topic: topic,
-                                                body: dataBody
-                                            });
-                                        });
-                                    } else {
-                                        shouldCommit = true;
-                                        (<ICommitLog[]>myCommitLog).push({
-                                            topic: topic,
-                                            body: data
-                                        });
-                                    }
-                                });
-                            } else {
-                                if (Array.isArray(data) && data.length > 0) {
-                                    myCommitLog = [];
-                                    shouldCommit = true;
-                                    data.forEach(dataBody => {
-                                        (<ICommitLog[]>myCommitLog).push({
-                                            topic: <string>mySystemProc.to,
-                                            body: dataBody
-                                        });
-                                    });
-                                } else {
-                                    shouldCommit = true;
-                                    myCommitLog = {
-                                        topic: <string>mySystemProc.to,
-                                        body: data
-                                    };
-                                }
-                            }
-                            cb();
-                        }).catch(function(err) {
-                            processorErr = err;
-                            cb();
-                        });
-                    }
-                } catch (e) {
-                    cb(e);
                 }
-            },
-            function(cb) {
-                if (processorErr) {
-                    pipeProcClient.reclaimProc(myProc.name)
+            } catch (e) {
+                cb(e);
+            }
+        },
+        function(cb) {
+            if (processorErr) {
+                pipeProcClient.reclaimProc(myProc.name)
+                .then(function() {
+                    cb();
+                })
+                .catch(cb);
+            } else {
+                setImmediate(cb);
+            }
+        },
+        function(cb) {
+            if (processorErr) {
+                setImmediate(cb);
+            } else {
+                if (shouldCommit) {
+                    pipeProcClient.ackCommit(myProc.name, myCommitLog)
                     .then(function() {
                         cb();
                     })
-                    .catch(cb);
+                    .catch(function(err) {
+                        ackCommitErr = err;
+                        cb();
+                    });
                 } else {
-                    setImmediate(cb);
-                }
-            },
-            function(cb) {
-                if (processorErr) {
-                    setImmediate(cb);
-                } else {
-                    if (shouldCommit) {
-                        pipeProcClient.ackCommit(myProc.name, myCommitLog)
-                        .then(function() {
-                            cb();
-                        })
-                        .catch(function(err) {
-                            ackCommitErr = err;
-                            cb();
-                        });
-                    } else {
-                        pipeProcClient.ack(myProc.name)
-                        .then(function() {
-                            cb();
-                        })
-                        .catch(function(err) {
-                            ackCommitErr = err;
-                            cb();
-                        });
-                    }
-                }
-            },
-            function(cb) {
-                if (ackCommitErr) {
-                    pipeProcClient.reclaimProc(myProc.name)
+                    pipeProcClient.ack(myProc.name)
                     .then(function() {
                         cb();
                     })
-                    .catch(cb);
-                } else {
-                    cb();
-                }
-            },
-            function(cb) {
-                if (processorErr) {
-                    cb(processorErr);
-                } else if (ackCommitErr) {
-                    cb(ackCommitErr);
-                } else {
-                    cb();
+                    .catch(function(err) {
+                        ackCommitErr = err;
+                        cb();
+                    });
                 }
             }
-        ], callback);
-    };
+        },
+        function(cb) {
+            if (ackCommitErr) {
+                pipeProcClient.reclaimProc(myProc.name)
+                .then(function() {
+                    cb();
+                })
+                .catch(cb);
+            } else {
+                cb();
+            }
+        },
+        function(cb) {
+            if (processorErr) {
+                cb(processorErr);
+            } else if (ackCommitErr) {
+                cb(ackCommitErr);
+            } else {
+                cb();
+            }
+        }
+    ], callback);
 }

@@ -76,6 +76,33 @@ export interface IPipeProcProcMessageReply extends IPipeProcMessage {
     }[];
 }
 
+export interface IPipeProcAvailableProcMessage extends IPipeProcMessage {
+    data: {
+        procList: {
+            name: string;
+            topic: string;
+            offset: string;
+            count: number;
+            maxReclaims: number;
+            reclaimTimeout: number;
+            onMaxReclaimsReached: string;
+        }[]
+    };
+}
+
+export interface IPipeProcAvailableProcMessageReply extends IPipeProcMessage {
+    data?: {
+        log?: {
+            id: string;
+            data: string
+        } | {
+            id: string;
+            data: string;
+        }[];
+        procName?: string;
+    };
+}
+
 export interface IPipeProcSystemProcMessage extends IPipeProcMessage {
     data: {
         options: {
@@ -324,6 +351,30 @@ export function prepareProcMessage(
                 reclaimTimeout: options.reclaimTimeout,
                 onMaxReclaimsReached: options.onMaxReclaimsReached
             }
+        }
+    };
+}
+
+export function prepareAvailableProcMessage(
+    msg: IPipeProcMessage,
+    procList: {
+        name: string,
+        topic: string,
+        offset: string,
+        count: number,
+        maxReclaims: number,
+        reclaimTimeout: number,
+        onMaxReclaimsReached: string
+    }[]
+): IPipeProcAvailableProcMessage {
+    if (!msg.msgKey) {
+        msg.msgKey = uuid();
+    }
+    return {
+        type: msg.type,
+        msgKey: msg.msgKey,
+        data: {
+            procList: procList
         }
     };
 }

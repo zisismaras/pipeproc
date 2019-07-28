@@ -8,6 +8,7 @@ import {
     prepareLogMessage,
     prepareProcMessage,
     prepareSystemProcMessage,
+    prepareAvailableProcMessage,
     prepareMessage,
     IPipeProcLogMessageReply,
     IPipeProcRangeMessageReply,
@@ -19,7 +20,8 @@ import {
     IPipeProcReclaimProcMessageReply,
     IPipeProcAckMessageReply,
     IPipeProcProcMessageReply,
-    IPipeProcSystemProcMessageReply
+    IPipeProcSystemProcMessageReply,
+    IPipeProcAvailableProcMessageReply
 } from "../common/messages";
 import {IPipeProcClient, ICommitLog} from ".";
 import {sendMessageToNode} from "./process";
@@ -200,6 +202,64 @@ export function proc(
     } else {
         callback(new Error("no_active_node"));
     }
+}
+
+export function availableProc(
+    client: IPipeProcClient,
+    procList: {
+        topic: string,
+        name: string,
+        offset: string,
+        count?: number,
+        maxReclaims?: number,
+        reclaimTimeout?: number,
+        onMaxReclaimsReached?: string
+    }[],
+    callback: (err?: null | Error, result?: {
+        procName?: string,
+        log?: {id: string, body: object} | {id: string, body: object}[]
+    }) => void
+): void {
+    if (!client.pipeProcNode) return callback(new Error("no_active_node"));
+    //TODO: validate topic, name, offset
+    const procListWithDefaults = procList.map(function(pr) {
+        return {
+            topic: pr.topic,
+            name: pr.name,
+            offset: pr.offset,
+            count: pr.count || 1,
+            maxReclaims: pr.maxReclaims || 10,
+            reclaimTimeout: pr.reclaimTimeout || 10000,
+            onMaxReclaimsReached: pr.onMaxReclaimsReached !== "disable" &&
+                                    pr.onMaxReclaimsReached !== "continue" ? "disable" : pr.onMaxReclaimsReached
+        };
+    });
+    const msg = prepareAvailableProcMessage(prepareMessage({type: "available_proc"}), procListWithDefaults);
+    client.messageMap[msg.msgKey] = function(e: IPipeProcAvailableProcMessageReply) {
+        if (e.type === "available_proc_ok") {
+            if (!e.data || !e.data.log) return callback();
+            if (Array.isArray(e.data.log)) {
+                try {
+                    const results = e.data.log.map(re => {
+                        return {id: re.id, body: JSON.parse(re.data)};
+                    });
+                    callback(null, {procName: e.data.procName, log: results});
+                } catch (e) {
+                    callback(new Error("malformed_log"));
+                }
+            } else {
+                try {
+                    const result = {id: e.data.log.id, body: JSON.parse(e.data.log.data)};
+                    callback(null, {procName: e.data.procName, log: result});
+                } catch (e) {
+                    callback(new Error("malformed_log"));
+                }
+            }
+        } else {
+            callback(new Error(e.errStatus || "uknown_error"));
+        }
+    };
+    sendMessageToNode(client, msg);
 }
 
 export function systemProc(

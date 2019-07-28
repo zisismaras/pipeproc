@@ -20,6 +20,7 @@ import {
     IPipeProcSystemProcMessage,
     IPipeProcWaitForProcsMessage,
     IPipeProcPingMessage,
+    IPipeProcAvailableProcMessage,
 
     IPipeProcLogMessageReply,
     IPipeProcProcMessageReply,
@@ -33,13 +34,14 @@ import {
     IPipeProcReclaimProcMessageReply,
     IPipeProcSystemProcMessageReply,
     IPipeProcPingMessageReply,
-    prepareMessage
+    prepareMessage,
+    IPipeProcAvailableProcMessageReply
 } from "../common/messages";
 import {commitLog} from "./commitLog";
 import {restoreState} from "./restoreState";
 import {runShutdownHooks} from "./shutdown";
 import {getRange} from "./getRange";
-import {proc, IProc} from "./proc";
+import {proc, IProc, getAvailableProc} from "./proc";
 import {systemProc, ISystemProc} from "./systemProc";
 import {IWorker, spawnWorkers} from "./workerManager";
 import {ack} from "./ack";
@@ -266,6 +268,29 @@ registerMessage<IPipeProcProcMessage["data"], IPipeProcProcMessageReply["data"]>
             } else {
                 if (log) {
                     callback(null, log);
+                } else {
+                    callback();
+                }
+            }
+        });
+    }
+});
+
+registerMessage<IPipeProcAvailableProcMessage["data"], IPipeProcAvailableProcMessageReply["data"]>(messageRegistry, {
+    messageType: "available_proc",
+    replySuccess: "available_proc_ok",
+    replyError: "available_proc_error",
+    writeOp: true,
+    listener: function(
+        data,
+        callback
+    ) {
+        getAvailableProc(db, activeProcs, activeTopics, data.procList, function(err, result) {
+            if (err) {
+                callback((err && err.message) || "uknown_error");
+            } else {
+                if (result) {
+                    callback(null, result);
                 } else {
                     callback();
                 }
