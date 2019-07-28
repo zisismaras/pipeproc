@@ -91,9 +91,11 @@ it("should return an error if an invalid proc is passed", function(done) {
     });
 });
 it("should return an error if something goes wrong with the iterator", function(done) {
+    //@ts-ignore
     db.iterator = jest.fn(function() {
         return {
             next: function(callback) {
+                //@ts-ignore
                 callback(new Error("Range Error"));
             }
         };
@@ -106,9 +108,11 @@ it("should return an error if something goes wrong with the iterator", function(
     });
 });
 it("should return an error if something goes wrong with the iterator's end", function(done) {
+    //@ts-ignore
     db.iterator = jest.fn(function() {
         return {
             next: function(callback) {
+                //@ts-ignore
                 callback();
             },
             end: function(callback) {
@@ -124,7 +128,9 @@ it("should return an error if something goes wrong with the iterator's end", fun
     });
 });
 it("should return an error if something goes wrong with leveldb", function(done) {
+    //@ts-ignore
     db.batch = jest.fn(function(_, callback) {
+        //@ts-ignore
         callback(new Error("Commit Error"));
     });
     destroyProc(db, activeProcs, "my_proc_0", function(err, theProc) {

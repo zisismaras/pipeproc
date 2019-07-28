@@ -229,7 +229,9 @@ describe("with a '>' offset", function() {
         });
     });
     it("should return an error if something goes wrong with leveldb", function(done) {
+        //@ts-ignore
         db.batch = jest.fn(function(_, callback) {
+            //@ts-ignore
             callback(new Error("Commit Error"));
         });
         proc(db, activeProcs, activeTopics, {
@@ -247,9 +249,11 @@ describe("with a '>' offset", function() {
         });
     });
     it("should return an error if something goes wrong with getRange()", function(done) {
+        //@ts-ignore
         db.iterator = jest.fn(function() {
             return {
                 next: function(callback) {
+                    //@ts-ignore
                     callback(new Error("Range Error"));
                 }
             };
@@ -286,7 +290,9 @@ describe("with a '>' offset", function() {
                 if (ackErr) {
                     done.fail(ackErr);
                 } else {
+                    //@ts-ignore
                     db.batch = jest.fn(function(_, callback) {
+                        //@ts-ignore
                         callback(new Error("Commit Error"));
                     });
                     proc(db, activeProcs, activeTopics, {

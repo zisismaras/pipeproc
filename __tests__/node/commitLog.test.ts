@@ -54,7 +54,9 @@ describe("add a single log", function() {
     test("it should return an error if there was a problem with leveldb batch", function(done) {
         const db: LevelDOWN.LevelDown = MemDOWN();
         const activeTopics: IActiveTopics = {};
+        //@ts-ignore
         db.batch = jest.fn(function(err, callback) {
+            //@ts-ignore
             callback(new Error("Commit Error"));
         });
         commitLog(db, activeTopics, {
@@ -69,10 +71,14 @@ describe("add a single log", function() {
     test("it should return an error if there was a problem with leveldb put", function(done) {
         const db: LevelDOWN.LevelDown = MemDOWN();
         const activeTopics: IActiveTopics = {};
+        //@ts-ignore
         db.batch = jest.fn(function(err, callback) {
+            //@ts-ignore
             callback(new Error("Commit Error"));
         });
+        //@ts-ignore
         db.put = jest.fn(function(_k, _v, callback) {
+            //@ts-ignore
             callback(new Error("Commit Error"));
         });
         commitLog(db, activeTopics, {
@@ -157,7 +163,9 @@ describe("add multiple logs to the same topic", function() {
     test("it should return an error if there was a problem with leveldb batch", function(done) {
         const db: LevelDOWN.LevelDown = MemDOWN();
         const activeTopics: IActiveTopics = {};
+        //@ts-ignore
         db.batch = jest.fn(function(err, callback) {
+            //@ts-ignore
             callback(new Error("Commit Error"));
         });
         commitLog(db, activeTopics, [{
@@ -178,10 +186,14 @@ describe("add multiple logs to the same topic", function() {
     test("it should return an error if there was a problem with leveldb put", function(done) {
         const db: LevelDOWN.LevelDown = MemDOWN();
         const activeTopics: IActiveTopics = {};
+        //@ts-ignore
         db.batch = jest.fn(function(err, callback) {
+            //@ts-ignore
             callback(new Error("Commit Error"));
         });
+        //@ts-ignore
         db.put = jest.fn(function(_k, _v, callback) {
+            //@ts-ignore
             callback(new Error("Commit Error"));
         });
         commitLog(db, activeTopics, [{
@@ -235,7 +247,7 @@ describe("add multiple logs to the same topic", function() {
                     cb(err, id);
                 });
             }
-        ], function(err: {message: string}, ids) {
+        ], function(err: Error, ids) {
             if (err) return done.fail(err);
             if (ids && Array.isArray(ids)) {
                 expect(ids[0]).toEndWith("-0");
@@ -357,7 +369,9 @@ describe("add multiple logs to different topics", function() {
     test("it should return an error if there was a problem with leveldb batch", function(done) {
         const db: LevelDOWN.LevelDown = MemDOWN();
         const activeTopics: IActiveTopics = {};
+        //@ts-ignore
         db.batch = jest.fn(function(err, callback) {
+            //@ts-ignore
             callback(new Error("Commit Error"));
         });
         commitLog(db, activeTopics, [{
@@ -378,10 +392,14 @@ describe("add multiple logs to different topics", function() {
     test("it should return an error if there was a problem with leveldb put", function(done) {
         const db: LevelDOWN.LevelDown = MemDOWN();
         const activeTopics: IActiveTopics = {};
+        //@ts-ignore
         db.batch = jest.fn(function(err, callback) {
+            //@ts-ignore
             callback(new Error("Commit Error"));
         });
+        //@ts-ignore
         db.put = jest.fn(function(_k, _v, callback) {
+            //@ts-ignore
             callback(new Error("Commit Error"));
         });
         commitLog(db, activeTopics, [{

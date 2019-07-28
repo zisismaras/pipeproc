@@ -143,7 +143,9 @@ describe("add a single log", function() {
             if (err) {
                 done.fail(err);
             } else {
+                //@ts-ignore
                 db.batch = jest.fn(function(_, callback) {
+                    //@ts-ignore
                     callback(new Error("Commit Error"));
                 });
                 ackCommitLog(

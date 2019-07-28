@@ -110,7 +110,7 @@ describe("committing logs", function() {
             body: {
                 hello: 1
             }
-        }).then(function(logId) {
+        }).then(function() {
             done.fail("it should not accept invalid topic names");
         }).catch(function(err) {
             expect(err).toBeInstanceOf(Error);
@@ -124,9 +124,9 @@ describe("committing logs", function() {
         client.commit({
             topic: "my_topic",
             body: 123
-        }).then(function(logId) {
+        }).then(function() {
             done.fail("it should not accept invalid log bodies");
-        }).catch(function(err) {
+        }).catch(function(err: Error) {
             expect(err).toBeInstanceOf(Error);
             expect(err.message).toEqual("invalid_log_format");
             done();
@@ -137,9 +137,9 @@ describe("committing logs", function() {
         //@ts-ignore
         client.commit({
             topic: "my_topic"
-        }).then(function(logId) {
+        }).then(function() {
             done.fail("it should not accept invalid log bodies");
-        }).catch(function(err) {
+        }).catch(function(err: Error) {
             expect(err).toBeInstanceOf(Error);
             expect(err.message).toEqual("invalid_log_format");
             done();
@@ -151,9 +151,9 @@ describe("committing logs", function() {
         client.commit({
             topic: "my_topic",
             body: null
-        }).then(function(logId) {
+        }).then(function() {
             done.fail("it should not accept invalid log bodies");
-        }).catch(function(err) {
+        }).catch(function(err: Error) {
             expect(err).toBeInstanceOf(Error);
             expect(err.message).toEqual("invalid_log_format");
             done();
