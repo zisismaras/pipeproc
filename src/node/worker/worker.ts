@@ -47,36 +47,39 @@ process.on("message", function(e: IPipeProcWorkerInitMessage) {
     if (e.type === "worker_init") {
         pipeProcClient.connect({isWorker: true, socket: e.data.address, tls: e.data.tls})
         .then(function(status) {
-            const strategy = new ExponentialStrategy({
-                randomisationFactor: 0.5,
-                initialDelay: 10,
-                maxDelay: 3000,
-                factor: 2
-            });
-            forever(function(next) {
-                pipeProcClient.availableProc(procList)
-                .then(function(result) {
-                    if (result && result.procName && result.log) {
-                        const myProc = procList.find(pr => pr.name === result.procName);
-                        procExec(<IProc>myProc, result.log, function(err) {
-                            if (err) {
-                                d(err);
-                                setTimeout(next, strategy.next());
-                            } else {
-                                strategy.reset();
-                                setImmediate(next);
-                            }
-                        });
-                    } else {
-                        d("no results");
-                        setTimeout(next, strategy.next());
-                    }
-                })
-                .catch(function(err) {
-                    d(err);
-                    setTimeout(next, strategy.next());
+            d("worker concurrency:", e.data.workerConcurrency);
+            for (let i = 0; i < e.data.workerConcurrency; i += 1) {
+                const strategy = new ExponentialStrategy({
+                    randomisationFactor: 0.5,
+                    initialDelay: 10,
+                    maxDelay: 3000,
+                    factor: 2
                 });
-            }, function() {});
+                forever(function(next) {
+                    pipeProcClient.availableProc(procList)
+                    .then(function(result) {
+                        if (result && result.procName && result.log) {
+                            const myProc = procList.find(pr => pr.name === result.procName);
+                            procExec(<IProc>myProc, result.log, function(err) {
+                                if (err) {
+                                    d(err);
+                                    setTimeout(next, strategy.next());
+                                } else {
+                                    strategy.reset();
+                                    setImmediate(next);
+                                }
+                            });
+                        } else {
+                            d("no results");
+                            setTimeout(next, strategy.next());
+                        }
+                    })
+                    .catch(function(err) {
+                        d(err);
+                        setTimeout(next, strategy.next());
+                    });
+                }, function() {});
+            }
             sendMessageToNode(prepareMessage({
                 type: "worker_connected",
                 msgKey: e.msgKey,

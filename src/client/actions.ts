@@ -221,8 +221,12 @@ export function availableProc(
     }) => void
 ): void {
     if (!client.pipeProcNode) return callback(new Error("no_active_node"));
-    //TODO: validate topic, name, offset
-    const procListWithDefaults = procList.map(function(pr) {
+    //invalid procs are skipped
+    const procListWithDefaults = procList
+    .filter(function(pr) {
+        return pr.name && pr.topic && pr.offset;
+    })
+    .map(function(pr) {
         return {
             topic: pr.topic,
             name: pr.name,

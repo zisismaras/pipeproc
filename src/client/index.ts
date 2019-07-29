@@ -63,6 +63,7 @@ export interface IPipeProcClient {
             memory?: boolean,
             location?: string,
             workers?: number,
+            workerConcurrency?: number,
             gc?: {minPruneTime?: number, interval?: number} | boolean
         }
     ): Promise<string>;
@@ -126,7 +127,7 @@ export interface IPipeProcClient {
             reclaimTimeout?: number,
             onMaxReclaimsReached?: string
         }[]
-    ): Promise<null | {
+    ): Promise<undefined | {
         procName?: string,
         log?: {id: string, body: object} | {id: string, body: object}[]
     }>;
@@ -202,6 +203,12 @@ export function PipeProc(): IPipeProcClient {
             } else {
                 workers = 1;
             }
+            let workerConcurrency: number;
+            if (options && typeof options.workerConcurrency === "number" && options.workerConcurrency >= 1) {
+                workerConcurrency = options.workerConcurrency;
+            } else {
+                workerConcurrency = 1;
+            }
             let tls: {
                 server: {
                     key: string;
@@ -259,6 +266,7 @@ export function PipeProc(): IPipeProcClient {
                     memory: (options && options.memory) || false,
                     location: (options && options.location) || "./pipeproc_data",
                     workers: workers,
+                    workerConcurrency: workerConcurrency,
                     gc: (options && options.gc) || undefined,
                     tls: tls
                 }, function(err, status) {

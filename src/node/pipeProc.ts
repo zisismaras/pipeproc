@@ -133,8 +133,13 @@ registerMessage<IPipeProcSystemInitMessage["data"], IPipeProcMessage["data"]>(me
                 callback((err && err.message) || "uknown_error");
             } else {
                 spawnWorkers(
-                    data.options.workers || 0,
-                    activeWorkers, activeProcs, activeSystemProcs, connectionAddress, clientTLS,
+                    data.options.workers,
+                    activeWorkers,
+                    activeProcs,
+                    activeSystemProcs,
+                    connectionAddress,
+                    clientTLS,
+                    data.options.workerConcurrency,
                 function(spawnErr) {
                     if (err) {
                         callback((spawnErr && spawnErr.message) || "uknown_error");

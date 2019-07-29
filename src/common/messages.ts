@@ -214,7 +214,8 @@ export interface IPipeProcSystemInitMessage extends IPipeProcMessage {
         options: {
             memory?: boolean,
             location?: string,
-            workers?: number,
+            workers: number,
+            workerConcurrency: number,
             gc?: {
                 minPruneTime?: number,
                 interval?: number
@@ -231,7 +232,8 @@ export interface IPipeProcWorkerInitMessage extends IPipeProcMessage {
             key: string;
             cert: string;
             ca: string;
-        } | false
+        } | false;
+        workerConcurrency: number;
     };
 }
 
@@ -515,14 +517,16 @@ export function prepareWorkerInitMessage(
         key: string;
         cert: string;
         ca: string;
-    } | false
+    } | false,
+    workerConcurrency: number
 ): IPipeProcWorkerInitMessage {
     return {
         type: "worker_init",
         msgKey: uuid(),
         data: {
             address: address,
-            tls: tls
+            tls: tls,
+            workerConcurrency: workerConcurrency
         }
     };
 }
