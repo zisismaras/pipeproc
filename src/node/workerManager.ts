@@ -27,6 +27,7 @@ export function spawnWorkers(
         cert: string;
         ca: string;
     } | false,
+    workerConcurrency: number,
     callback: (err?: Error | null) => void
 ): void {
     if (!workers) return process.nextTick(callback);
@@ -36,7 +37,7 @@ export function spawnWorkers(
         const worker = {process: fork(`${__dirname}/worker/worker`)};
         series([
             function(cb) {
-                const msg = prepareWorkerInitMessage(address, clientTLS);
+                const msg = prepareWorkerInitMessage(address, clientTLS, workerConcurrency);
                 const listener = function(e: IPipeProcWorkerInitMessageReply) {
                     if (e.msgKey === msg.msgKey) {
                         worker.process.removeListener("message", listener);

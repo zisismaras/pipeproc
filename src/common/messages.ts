@@ -76,6 +76,33 @@ export interface IPipeProcProcMessageReply extends IPipeProcMessage {
     }[];
 }
 
+export interface IPipeProcAvailableProcMessage extends IPipeProcMessage {
+    data: {
+        procList: {
+            name: string;
+            topic: string;
+            offset: string;
+            count: number;
+            maxReclaims: number;
+            reclaimTimeout: number;
+            onMaxReclaimsReached: string;
+        }[]
+    };
+}
+
+export interface IPipeProcAvailableProcMessageReply extends IPipeProcMessage {
+    data?: {
+        log?: {
+            id: string;
+            data: string
+        } | {
+            id: string;
+            data: string;
+        }[];
+        procName?: string;
+    };
+}
+
 export interface IPipeProcSystemProcMessage extends IPipeProcMessage {
     data: {
         options: {
@@ -187,7 +214,8 @@ export interface IPipeProcSystemInitMessage extends IPipeProcMessage {
         options: {
             memory?: boolean,
             location?: string,
-            workers?: number,
+            workers: number,
+            workerConcurrency: number,
             gc?: {
                 minPruneTime?: number,
                 interval?: number
@@ -204,7 +232,8 @@ export interface IPipeProcWorkerInitMessage extends IPipeProcMessage {
             key: string;
             cert: string;
             ca: string;
-        } | false
+        } | false;
+        workerConcurrency: number;
     };
 }
 
@@ -324,6 +353,30 @@ export function prepareProcMessage(
                 reclaimTimeout: options.reclaimTimeout,
                 onMaxReclaimsReached: options.onMaxReclaimsReached
             }
+        }
+    };
+}
+
+export function prepareAvailableProcMessage(
+    msg: IPipeProcMessage,
+    procList: {
+        name: string,
+        topic: string,
+        offset: string,
+        count: number,
+        maxReclaims: number,
+        reclaimTimeout: number,
+        onMaxReclaimsReached: string
+    }[]
+): IPipeProcAvailableProcMessage {
+    if (!msg.msgKey) {
+        msg.msgKey = uuid();
+    }
+    return {
+        type: msg.type,
+        msgKey: msg.msgKey,
+        data: {
+            procList: procList
         }
     };
 }
@@ -464,14 +517,16 @@ export function prepareWorkerInitMessage(
         key: string;
         cert: string;
         ca: string;
-    } | false
+    } | false,
+    workerConcurrency: number
 ): IPipeProcWorkerInitMessage {
     return {
         type: "worker_init",
         msgKey: uuid(),
         data: {
             address: address,
-            tls: tls
+            tls: tls,
+            workerConcurrency: workerConcurrency
         }
     };
 }

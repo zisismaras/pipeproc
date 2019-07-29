@@ -6,6 +6,7 @@ import {tmpdir} from "os";
 import {readFileSync} from "fs";
 
 import {connect as socketConnect} from "../socket/connect";
+import {EventEmitter} from "events";
 
 const d = debug("pipeproc:client");
 
@@ -21,6 +22,7 @@ export function spawn(
         memory: boolean,
         location: string,
         workers: number,
+        workerConcurrency: number,
         gc?: {minPruneTime?: number, interval?: number} | boolean,
         tls: {
             server: {
@@ -207,7 +209,7 @@ export function shutdown(
     if (client.connectSocket) {
         client.connectSocket.close();
     }
-    if (client.pipeProcNode) {
+    if (client.pipeProcNode instanceof EventEmitter) {
         d("closing node...");
         const shutDownMessage = prepareMessage({type: "system_shutdown"});
         const systemClosedListener = function(e: IPipeProcMessage) {
@@ -224,6 +226,11 @@ export function shutdown(
         };
         (<ChildProcess>client.pipeProcNode).on("message", systemClosedListener);
         (<ChildProcess>client.pipeProcNode).send(shutDownMessage);
+    } else if (client.pipeProcNode) {
+        d("disconnected");
+        delete client.pipeProcNode;
+        delete client.connectSocket;
+        callback(null, "disconnected");
     } else {
         return callback(new Error("no_active_node"));
     }
