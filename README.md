@@ -144,8 +144,10 @@ spawn(
         memory?: boolean,
         //set the location of the underlying store (if memory is false)
         location?: string,
-        //the number of workers(processes) to use (check the systemProc section below), set to 0 for no workers, defaults to the cpu thread count
+        //the number of workers(processes) to use (check the systemProc section below), set to 0 for no workers, defaults to 1
         workers?: number,
+        //the number of processors that can be run concurrently by each worker, defaults to 1
+        workerConcurrency?: number,
         //tune the garbage collector settings (check the gc section below)
         gc?: {minPruneTime?: number, interval?: number} | boolean
     }
