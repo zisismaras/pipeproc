@@ -516,7 +516,6 @@ const shutdownListener = function(e: IPipeProcMessage) {
                         errStatus: (err && err.message) || "uknown_error"
                     }));
                 }
-                process.exit(1);
             } else {
                 if (process && typeof process.send === "function") {
                     process.send(prepareMessage({
@@ -524,7 +523,6 @@ const shutdownListener = function(e: IPipeProcMessage) {
                         msgKey: e.msgKey
                     }));
                 }
-                process.exit(0);
             }
         });
     }

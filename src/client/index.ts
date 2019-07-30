@@ -19,10 +19,19 @@ import {
     ILiveProc
 } from "./liveproc";
 import {IProc} from "../node/proc";
-import {ChildProcess} from "child_process";
 import {ConnectSocket} from "../socket/connect";
 import {resolve as pathResolve} from "path";
 import {existsSync} from "fs";
+import {Monitor} from "forever-monitor";
+import {ChildProcess} from "child_process";
+
+//tslint:disable interface-name
+declare module "forever-monitor" {
+    interface Monitor {
+        child: ChildProcess;
+    }
+}
+//tslint:enable interface-name
 
 export interface ICommitLog {
     topic: string;
@@ -30,7 +39,7 @@ export interface ICommitLog {
 }
 
 export interface IPipeProcClient {
-    pipeProcNode?: ChildProcess | {};
+    pipeProcNode?: Monitor | {};
     connectSocket?: ConnectSocket;
     messageMap: {
         //tslint:disable no-any
