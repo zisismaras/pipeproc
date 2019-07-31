@@ -66,7 +66,7 @@ export function connect(
             messageListeners.push(listener);
         },
         close: function() {
-            options.tls ? socket.destroy() : socket.end();
+            socket.end();
         },
         send: getSender(socket)
     };

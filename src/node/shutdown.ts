@@ -12,6 +12,7 @@ export function runShutdownHooks(
     callback: (err?: Error) => void
 ): void {
     activeWorkers.forEach(function(worker) {
+        worker.monitor.stop();
         worker.process.kill("SIGTERM");
     });
     d("workers closed");

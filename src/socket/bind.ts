@@ -44,6 +44,9 @@ export function bind(
         socket.on("close", function() {
             socketMap.delete(socket);
         });
+        socket.on("error", function(err) {
+            d(err);
+        });
         socket.on("data", function(chunk: string) {
             const data = binder.buffer + chunk;
             const messages = data.split("%EOM%");
