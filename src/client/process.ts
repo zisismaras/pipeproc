@@ -41,7 +41,6 @@ export function spawn(
 ): void {
     if (client.pipeProcNode) return callback(null, "node_already_active");
     d("spawning node...");
-    // client.pipeProcNode = forkProcess(`${__dirname}/../node/pipeProc`);
     client.pipeProcNode = new Monitor(pathJoin(__dirname, "..", "node", "pipeProc.js"), {
         //@ts-ignore
         fork: true
@@ -56,7 +55,6 @@ export function spawn(
         connectionAddress = `ipc://${tmpdir()}/pipeproc.${options.namespace}`;
     }
     function spawnNode() {
-        console.log("spawn");
         const initIPCMessage = prepareMessage({type: "init_ipc", data: {address: connectionAddress, tls: options.tls}});
         const ipcEstablishedListener = function(e: IPipeProcIPCEstablishedMessage) {
             if ((e.type !== "ipc_established") || e.msgKey !== initIPCMessage.msgKey) return;

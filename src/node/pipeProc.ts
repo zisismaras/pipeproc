@@ -48,7 +48,7 @@ import {ack} from "./ack";
 import {ackCommitLog} from "./ackCommitLog";
 import {destroyProc} from "./destroyProc";
 import {initializeMessages, registerMessage, IMessageRegistry} from "./messaging";
-import {IWriteBuffer, startWriteBuffer} from "./writeBuffer";
+import {IWriteBuffer, WriteBufferStopper, startWriteBuffer} from "./writeBuffer";
 import {disableProc, resumeProc} from "./resumeDisableProc";
 import {reclaimProc} from "./reclaimProc";
 import {collect} from "./gc/collect";
@@ -83,6 +83,7 @@ const systemState: ISystemState = {active: false};
 const messageRegistry: IMessageRegistry = {};
 
 const writeBuffer: IWriteBuffer = [];
+let stopWriteBuffer: WriteBufferStopper;
 
 const activeProcs: IProc[] = [];
 
@@ -505,29 +506,31 @@ const initIPCListener = function(e: IPipeProcInitIPCMessage) {
 const shutdownListener = function(e: IPipeProcMessage) {
     if (e.type === "system_shutdown") {
         d("shutting down...");
-        serverSocket.close();
-        process.removeListener("message", shutdownListener);
-        runShutdownHooks(db, systemState, activeWorkers, function(err) {
-            if (err) {
-                if (process && typeof process.send === "function") {
-                    process.send(prepareMessage({
-                        type: "system_closed_error",
-                        msgKey: e.msgKey,
-                        errStatus: (err && err.message) || "uknown_error"
-                    }));
+        stopWriteBuffer(function() {
+            serverSocket.close();
+            process.removeListener("message", shutdownListener);
+            runShutdownHooks(db, systemState, activeWorkers, function(err) {
+                if (err) {
+                    if (process && typeof process.send === "function") {
+                        process.send(prepareMessage({
+                            type: "system_closed_error",
+                            msgKey: e.msgKey,
+                            errStatus: (err && err.message) || "uknown_error"
+                        }));
+                    }
+                } else {
+                    if (process && typeof process.send === "function") {
+                        process.send(prepareMessage({
+                            type: "system_closed",
+                            msgKey: e.msgKey
+                        }));
+                    }
                 }
-            } else {
-                if (process && typeof process.send === "function") {
-                    process.send(prepareMessage({
-                        type: "system_closed",
-                        msgKey: e.msgKey
-                    }));
-                }
-            }
+            });
         });
     }
 };
 
 process.on("message", initIPCListener);
 process.on("message", shutdownListener);
-startWriteBuffer(writeBuffer);
+stopWriteBuffer = startWriteBuffer(writeBuffer);

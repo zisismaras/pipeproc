@@ -82,6 +82,7 @@ export function bind(
                 } catch (_e) {}
             }
             server.close();
+            d("message socket closed");
         },
         onMessage: function(listener) {
             messageListeners.push(listener);
