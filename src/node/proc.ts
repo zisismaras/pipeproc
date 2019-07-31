@@ -91,15 +91,6 @@ export function getAvailableProc(
         log?: IRangeResult | IRangeResult[]
     }) => void
 ): void {
-    /*
-        iterate procList
-            if a proc is found that does not exist in activeProcs
-                we use it
-            else
-                we pick the best active proc and use that
-                best = max(proc.topic.currentTone - (proc.lastAckedRange[1] || 0))
-        return the name of the proc that we used and its result
-    */
    //@ts-ignore
    let newProc;
    for (const pr of procList) {
@@ -130,12 +121,11 @@ export function getAvailableProc(
             }
         });
    } else {
-        const myProc = getBestAvailableProc(
-            activeTopics,
-            //map the procList to actual procs
+        const myProc = roundRobinPick(
+            activeProcs,
             procList
-                .filter(pr => activeProcs.find(ap => ap.name === pr.name && ap.status === "active"))
                 .map(pr => <IProc>activeProcs.find(ap => ap.name === pr.name))
+                .filter(p => topicHasNewLogs(activeTopics, p) && p.status === "active")
         );
         if (!myProc) {
             return callback();
@@ -163,27 +153,17 @@ export function getAvailableProc(
    }
 }
 
-function getBestAvailableProc(activeTopics: IActiveTopics, procList: IProc[]) {
-    const procsWithWork = procList.filter(p => topicHasNewLogs(activeTopics, p));
-    if (procsWithWork.length === 0) {
-        return null;
-    }
-    let bestProc = procsWithWork[0];
-    for (let i = 1; i < procsWithWork.length; i += 1) {
-        const currentProc = procsWithWork[i];
-        let myLastAck = 0;
-        if (currentProc.lastAckedRange) {
-            myLastAck = parseInt(currentProc.lastAckedRange.split("-")[1]);
-        }
-        const myTopic = activeTopics[currentProc.topic];
-        const bestProcLastAck = parseInt(bestProc.lastAckedRange.split("-")[1]);
-        const bestProcTopic = activeTopics[bestProc.topic];
-        if (myTopic.currentTone - myLastAck > bestProcTopic.currentTone - bestProcLastAck) {
-            bestProc = currentProc;
+function roundRobinPick(activeProcs: IProc[], procsWithWork: IProc[]) {
+    //tslint:disable prefer-for-of
+    for (let i = 0; i < activeProcs.length; i += 1) {
+        const currentProc = activeProcs.shift();
+        activeProcs.push(<IProc>currentProc);
+        if (procsWithWork.indexOf(<IProc>currentProc) > -1) {
+            return <IProc>currentProc;
         }
     }
-
-    return bestProc;
+    //tslint:enable prefer-for-of
+    return null;
 }
 
 function topicHasNewLogs(activeTopics: IActiveTopics, myProc: IProc) {
