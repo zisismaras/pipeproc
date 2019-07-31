@@ -40,6 +40,7 @@ describe("availableProc", function() {
     });
 
     it("should first return a proc that hasn't been created yet", async function() {
+        //create the first proc
         await proc(db, activeProcs, activeTopics, {
             name: "my_proc_0",
             topic: "my_topic_0",
@@ -50,7 +51,8 @@ describe("availableProc", function() {
             onMaxReclaimsReached: "disable"
         });
         await ack(db, activeProcs, "my_proc_0");
-        const {procName, log} = await getAvailableProc(db, activeProcs, activeTopics, [{
+        //it should return the new proc my_proc_1
+        let result = await getAvailableProc(db, activeProcs, activeTopics, [{
             name: "my_proc_0",
             topic: "my_topic_0",
             offset: ">",
@@ -67,44 +69,10 @@ describe("availableProc", function() {
             reclaimTimeout: 10000,
             onMaxReclaimsReached: "disable"
         }]);
-        expect(procName).toBe("my_proc_1");
-        expect((<IRangeResult>log).id).toBe(addedIds[0]);
-    });
-
-    it("should return the best available proc", async function() {
-        //my_proc_0 has acked 2/3 logs of its topic
-        await proc(db, activeProcs, activeTopics, {
-            name: "my_proc_0",
-            topic: "my_topic_0",
-            offset: ">",
-            count: 1,
-            maxReclaims: 10,
-            reclaimTimeout: 10000,
-            onMaxReclaimsReached: "disable"
-        });
-        await ack(db, activeProcs, "my_proc_0");
-        await proc(db, activeProcs, activeTopics, {
-            name: "my_proc_0",
-            topic: "my_topic_0",
-            offset: ">",
-            count: 1,
-            maxReclaims: 10,
-            reclaimTimeout: 10000,
-            onMaxReclaimsReached: "disable"
-        });
-        await ack(db, activeProcs, "my_proc_0");
-        //my_proc_1 has acked 1/3 logs of its topic
-        await proc(db, activeProcs, activeTopics, {
-            name: "my_proc_1",
-            topic: "my_topic_0",
-            offset: ">",
-            count: 1,
-            maxReclaims: 10,
-            reclaimTimeout: 10000,
-            onMaxReclaimsReached: "disable"
-        });
-        await ack(db, activeProcs, "my_proc_1");
-        const {procName, log} = await getAvailableProc(db, activeProcs, activeTopics, [{
+        expect(result.procName).toBe("my_proc_1");
+        expect((<IRangeResult>result.log).id).toBe(addedIds[0]);
+        //it should return the new proc my_proc_2
+        result = await getAvailableProc(db, activeProcs, activeTopics, [{
             name: "my_proc_0",
             topic: "my_topic_0",
             offset: ">",
@@ -120,9 +88,17 @@ describe("availableProc", function() {
             maxReclaims: 10,
             reclaimTimeout: 10000,
             onMaxReclaimsReached: "disable"
+        }, {
+            name: "my_proc_2",
+            topic: "my_topic_0",
+            offset: ">",
+            count: 1,
+            maxReclaims: 10,
+            reclaimTimeout: 10000,
+            onMaxReclaimsReached: "disable"
         }]);
-        expect(procName).toBe("my_proc_1");
-        expect((<IRangeResult>log).id).toBe(addedIds[1]);
+        expect(result.procName).toBe("my_proc_2");
+        expect((<IRangeResult>result.log).id).toBe(addedIds[0]);
     });
 
     it("should return nothing if there is no proc with work", async function() {
@@ -169,41 +145,9 @@ describe("availableProc", function() {
         expect(result).toBeUndefined();
     });
 
-    it("should not use procs that are disabled", async function() {
-        //my_proc_0 has acked 2/3 logs of its topic and is still active
-        await proc(db, activeProcs, activeTopics, {
-            name: "my_proc_0",
-            topic: "my_topic_0",
-            offset: ">",
-            count: 1,
-            maxReclaims: 10,
-            reclaimTimeout: 10000,
-            onMaxReclaimsReached: "disable"
-        });
-        await ack(db, activeProcs, "my_proc_0");
-        await proc(db, activeProcs, activeTopics, {
-            name: "my_proc_0",
-            topic: "my_topic_0",
-            offset: ">",
-            count: 1,
-            maxReclaims: 10,
-            reclaimTimeout: 10000,
-            onMaxReclaimsReached: "disable"
-        });
-        await ack(db, activeProcs, "my_proc_0");
-        //my_proc_1 has acked 1/3 logs of its topic but it is then disabled
-        await proc(db, activeProcs, activeTopics, {
-            name: "my_proc_1",
-            topic: "my_topic_0",
-            offset: ">",
-            count: 1,
-            maxReclaims: 10,
-            reclaimTimeout: 10000,
-            onMaxReclaimsReached: "disable"
-        });
-        await ack(db, activeProcs, "my_proc_1");
-        await disableProc(db, activeProcs, "my_proc_1");
-        const {procName, log} = await getAvailableProc(db, activeProcs, activeTopics, [{
+    it("round robin works", async function() {
+        //the first proc is created and returned
+        let result = await getAvailableProc(db, activeProcs, activeTopics, [{
             name: "my_proc_0",
             topic: "my_topic_0",
             offset: ">",
@@ -220,8 +164,175 @@ describe("availableProc", function() {
             reclaimTimeout: 10000,
             onMaxReclaimsReached: "disable"
         }]);
-        expect(procName).toBe("my_proc_0");
-        expect((<IRangeResult>log).id).toBe(addedIds[2]);
+        await ack(db, activeProcs, result.procName);
+        expect(result.procName).toBe("my_proc_0");
+        //the second proc is created and returned
+        result = await getAvailableProc(db, activeProcs, activeTopics, [{
+            name: "my_proc_0",
+            topic: "my_topic_0",
+            offset: ">",
+            count: 1,
+            maxReclaims: 10,
+            reclaimTimeout: 10000,
+            onMaxReclaimsReached: "disable"
+        }, {
+            name: "my_proc_1",
+            topic: "my_topic_0",
+            offset: ">",
+            count: 1,
+            maxReclaims: 10,
+            reclaimTimeout: 10000,
+            onMaxReclaimsReached: "disable"
+        }]);
+        await ack(db, activeProcs, result.procName);
+        expect(result.procName).toBe("my_proc_1");
+        //round robin should select the first proc
+        result = await getAvailableProc(db, activeProcs, activeTopics, [{
+            name: "my_proc_0",
+            topic: "my_topic_0",
+            offset: ">",
+            count: 1,
+            maxReclaims: 10,
+            reclaimTimeout: 10000,
+            onMaxReclaimsReached: "disable"
+        }, {
+            name: "my_proc_1",
+            topic: "my_topic_0",
+            offset: ">",
+            count: 1,
+            maxReclaims: 10,
+            reclaimTimeout: 10000,
+            onMaxReclaimsReached: "disable"
+        }]);
+        await ack(db, activeProcs, result.procName);
+        expect(result.procName).toBe("my_proc_0");
+        //round robin should select the second proc
+        result = await getAvailableProc(db, activeProcs, activeTopics, [{
+            name: "my_proc_0",
+            topic: "my_topic_0",
+            offset: ">",
+            count: 1,
+            maxReclaims: 10,
+            reclaimTimeout: 10000,
+            onMaxReclaimsReached: "disable"
+        }, {
+            name: "my_proc_1",
+            topic: "my_topic_0",
+            offset: ">",
+            count: 1,
+            maxReclaims: 10,
+            reclaimTimeout: 10000,
+            onMaxReclaimsReached: "disable"
+        }]);
+        await ack(db, activeProcs, result.procName);
+        expect(result.procName).toBe("my_proc_1");
+        //round robin should select the first proc
+        result = await getAvailableProc(db, activeProcs, activeTopics, [{
+            name: "my_proc_0",
+            topic: "my_topic_0",
+            offset: ">",
+            count: 1,
+            maxReclaims: 10,
+            reclaimTimeout: 10000,
+            onMaxReclaimsReached: "disable"
+        }, {
+            name: "my_proc_1",
+            topic: "my_topic_0",
+            offset: ">",
+            count: 1,
+            maxReclaims: 10,
+            reclaimTimeout: 10000,
+            onMaxReclaimsReached: "disable"
+        }]);
+        await ack(db, activeProcs, result.procName);
+        expect(result.procName).toBe("my_proc_0");
+        //round robin should select the second proc
+        result = await getAvailableProc(db, activeProcs, activeTopics, [{
+            name: "my_proc_0",
+            topic: "my_topic_0",
+            offset: ">",
+            count: 1,
+            maxReclaims: 10,
+            reclaimTimeout: 10000,
+            onMaxReclaimsReached: "disable"
+        }, {
+            name: "my_proc_1",
+            topic: "my_topic_0",
+            offset: ">",
+            count: 1,
+            maxReclaims: 10,
+            reclaimTimeout: 10000,
+            onMaxReclaimsReached: "disable"
+        }]);
+        await ack(db, activeProcs, result.procName);
+        expect(result.procName).toBe("my_proc_1");
+    });
+
+    it("should not use procs that are disabled", async function() {
+        //create the first proc
+        await proc(db, activeProcs, activeTopics, {
+            name: "my_proc_0",
+            topic: "my_topic_0",
+            offset: ">",
+            count: 1,
+            maxReclaims: 10,
+            reclaimTimeout: 10000,
+            onMaxReclaimsReached: "disable"
+        });
+        await ack(db, activeProcs, "my_proc_0");
+        //create the second proc
+        await proc(db, activeProcs, activeTopics, {
+            name: "my_proc_1",
+            topic: "my_topic_0",
+            offset: ">",
+            count: 1,
+            maxReclaims: 10,
+            reclaimTimeout: 10000,
+            onMaxReclaimsReached: "disable"
+        });
+        await ack(db, activeProcs, "my_proc_1");
+        //round robin should select the first proc
+        let result = await getAvailableProc(db, activeProcs, activeTopics, [{
+            name: "my_proc_0",
+            topic: "my_topic_0",
+            offset: ">",
+            count: 1,
+            maxReclaims: 10,
+            reclaimTimeout: 10000,
+            onMaxReclaimsReached: "disable"
+        }, {
+            name: "my_proc_1",
+            topic: "my_topic_0",
+            offset: ">",
+            count: 1,
+            maxReclaims: 10,
+            reclaimTimeout: 10000,
+            onMaxReclaimsReached: "disable"
+        }]);
+        await ack(db, activeProcs, result.procName);
+        expect(result.procName).toBe("my_proc_0");
+        //disable my_proc_1
+        await disableProc(db, activeProcs, "my_proc_1");
+        //round robin should select the first proc again since my_proc_1 is disabled
+        result = await getAvailableProc(db, activeProcs, activeTopics, [{
+            name: "my_proc_0",
+            topic: "my_topic_0",
+            offset: ">",
+            count: 1,
+            maxReclaims: 10,
+            reclaimTimeout: 10000,
+            onMaxReclaimsReached: "disable"
+        }, {
+            name: "my_proc_1",
+            topic: "my_topic_0",
+            offset: ">",
+            count: 1,
+            maxReclaims: 10,
+            reclaimTimeout: 10000,
+            onMaxReclaimsReached: "disable"
+        }]);
+        await ack(db, activeProcs, result.procName);
+        expect(result.procName).toBe("my_proc_0");
     });
 });
 
