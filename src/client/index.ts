@@ -1,3 +1,4 @@
+process.env.DEBUG_COLORS = "true";
 import {spawn, shutdown, connect} from "./process";
 import {
     commit,

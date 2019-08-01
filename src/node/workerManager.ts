@@ -40,7 +40,8 @@ export function spawnWorkers(
         const monitor = new Monitor(pathJoin(__dirname, "worker", "worker.js"), {
             //@ts-ignore
             fork: true,
-            watch: false
+            watch: false,
+            args: ["--color"]
         });
         monitor.start();
         const worker = {process: monitor.child, monitor: monitor};

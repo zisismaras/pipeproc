@@ -44,7 +44,10 @@ export function spawn(
     client.pipeProcNode = new Monitor(pathJoin(__dirname, "..", "node", "pipeProc.js"), {
         //@ts-ignore
         fork: true,
-        watch: false
+        watch: false,
+        spawnWith: {detached: true},
+        args: ["--color"],
+        max: 3
     });
     (<Monitor>client.pipeProcNode).start();
     let connectionAddress: string;
