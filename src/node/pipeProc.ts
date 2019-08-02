@@ -91,6 +91,8 @@ const activeSystemProcs: ISystemProc[] = [];
 
 const activeWorkers: IWorker[] = [];
 
+let gcInterval: NodeJS.Timer;
+
 registerMessage<IPipeProcSystemInitMessage["data"], IPipeProcMessage["data"]>(messageRegistry, {
     messageType: "system_init",
     replySuccess: "system_ready",
@@ -141,6 +143,7 @@ registerMessage<IPipeProcSystemInitMessage["data"], IPipeProcMessage["data"]>(me
                     connectionAddress,
                     clientTLS,
                     data.options.workerConcurrency,
+                    data.options.workerRestartAfter,
                 function(spawnErr) {
                     if (err) {
                         callback((spawnErr && spawnErr.message) || "uknown_error");
@@ -152,7 +155,7 @@ registerMessage<IPipeProcSystemInitMessage["data"], IPipeProcMessage["data"]>(me
                             const GC_INTERVAL = (data.options.gc &&
                                 (<{interval: number}>data.options.gc).interval) || 30000;
                             let gcRunning = false;
-                            setInterval(function() {
+                            gcInterval = setInterval(function() {
                                 if (gcRunning) return;
                                 d("gc will start running...");
                                 gcRunning = true;
@@ -508,6 +511,10 @@ const shutdownListener = function(e: IPipeProcMessage) {
         d("shutting down...");
         stopWriteBuffer(function() {
             serverSocket.close();
+            if (gcInterval) {
+                d("stopping gc");
+                clearInterval(gcInterval);
+            }
             process.removeListener("message", shutdownListener);
             runShutdownHooks(db, systemState, activeWorkers, function(err) {
                 if (err) {

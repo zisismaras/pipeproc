@@ -31,6 +31,7 @@ export function spawnWorkers(
         ca: string;
     } | false,
     workerConcurrency: number,
+    workerRestartAfter: number,
     callback: (err?: Error | null) => void
 ): void {
     if (!workers) return process.nextTick(callback);
@@ -48,7 +49,7 @@ export function spawnWorkers(
         function startWorker(restart: boolean) {
             series([
                 function(cb) {
-                    const msg = prepareWorkerInitMessage(address, clientTLS, workerConcurrency);
+                    const msg = prepareWorkerInitMessage(address, clientTLS, workerConcurrency, workerRestartAfter);
                     const listener = function(e: IPipeProcWorkerInitMessageReply) {
                         if (e.msgKey === msg.msgKey) {
                             worker.process.removeListener("message", listener);

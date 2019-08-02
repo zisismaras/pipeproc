@@ -23,6 +23,7 @@ export function spawn(
         location: string,
         workers: number,
         workerConcurrency: number,
+        workerRestartAfter: number,
         gc?: {minPruneTime?: number, interval?: number} | boolean,
         tls: {
             server: {

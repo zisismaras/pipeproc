@@ -210,12 +210,14 @@ export interface IPipeProcReclaimProcMessageReply extends IPipeProcMessage {
 }
 
 export interface IPipeProcSystemInitMessage extends IPipeProcMessage {
+    type: "system_init";
     data: {
         options: {
             memory?: boolean,
             location?: string,
             workers: number,
             workerConcurrency: number,
+            workerRestartAfter: number,
             gc?: {
                 minPruneTime?: number,
                 interval?: number
@@ -234,6 +236,7 @@ export interface IPipeProcWorkerInitMessage extends IPipeProcMessage {
             ca: string;
         } | false;
         workerConcurrency: number;
+        workerRestartAfter: number;
     };
 }
 
@@ -518,7 +521,8 @@ export function prepareWorkerInitMessage(
         cert: string;
         ca: string;
     } | false,
-    workerConcurrency: number
+    workerConcurrency: number,
+    workerRestartAfter: number
 ): IPipeProcWorkerInitMessage {
     return {
         type: "worker_init",
@@ -526,7 +530,8 @@ export function prepareWorkerInitMessage(
         data: {
             address: address,
             tls: tls,
-            workerConcurrency: workerConcurrency
+            workerConcurrency: workerConcurrency,
+            workerRestartAfter: workerRestartAfter
         }
     };
 }
