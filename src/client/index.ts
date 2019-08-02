@@ -39,6 +39,11 @@ export interface ICommitLog {
     body: object;
 }
 
+type InlineProcessorFn = (
+    result?: {id: string, body: object} | {id: string, body: object}[],
+    done?: (err: Error | null, newLog?: {id: string, body: object} | {id: string, body: object}[]) => void
+) => void;
+
 export interface IPipeProcClient {
     pipeProcNode?: Monitor | {};
     connectSocket?: ConnectSocket;
@@ -152,7 +157,7 @@ export interface IPipeProcClient {
             onMaxReclaimsReached?: string,
             from: string | string[],
             to?: string | string[],
-            processor: string | ((result?: {id: string, body: object} | {id: string, body: object}[]) => void)
+            processor: string | InlineProcessorFn;
         }
     ): Promise<IProc | IProc[]>;
     ack(
