@@ -1,3 +1,4 @@
+import debug from "debug";
 import {
     prepareMessage,
     IPipeProcMessage
@@ -7,6 +8,8 @@ import {IWorker} from "./workerManager";
 import {readFileSync} from "fs";
 
 import {bind, ServerSocket} from "../socket/bind";
+
+const d = debug("pipeproc:node");
 
 export interface IMessageRegistry {
     [key: string]: {
@@ -40,7 +43,11 @@ export type messageListener<T, U> = (
 
 export function sendMessageToWorker(msg: IPipeProcMessage, worker: IWorker, cb?: () => void): void {
     if (worker.process && typeof worker.process.send === "function") {
-        worker.process.send(msg, cb);
+        try {
+            worker.process.send(msg, cb);
+        } catch (e) {
+            d(e);
+        }
     }
 }
 

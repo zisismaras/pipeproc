@@ -48,7 +48,7 @@ import {ack} from "./ack";
 import {ackCommitLog} from "./ackCommitLog";
 import {destroyProc} from "./destroyProc";
 import {initializeMessages, registerMessage, IMessageRegistry} from "./messaging";
-import {IWriteBuffer, startWriteBuffer} from "./writeBuffer";
+import {IWriteBuffer, WriteBufferStopper, startWriteBuffer} from "./writeBuffer";
 import {disableProc, resumeProc} from "./resumeDisableProc";
 import {reclaimProc} from "./reclaimProc";
 import {collect} from "./gc/collect";
@@ -83,12 +83,15 @@ const systemState: ISystemState = {active: false};
 const messageRegistry: IMessageRegistry = {};
 
 const writeBuffer: IWriteBuffer = [];
+let stopWriteBuffer: WriteBufferStopper;
 
 const activeProcs: IProc[] = [];
 
 const activeSystemProcs: ISystemProc[] = [];
 
 const activeWorkers: IWorker[] = [];
+
+let gcInterval: NodeJS.Timer;
 
 registerMessage<IPipeProcSystemInitMessage["data"], IPipeProcMessage["data"]>(messageRegistry, {
     messageType: "system_init",
@@ -140,6 +143,7 @@ registerMessage<IPipeProcSystemInitMessage["data"], IPipeProcMessage["data"]>(me
                     connectionAddress,
                     clientTLS,
                     data.options.workerConcurrency,
+                    data.options.workerRestartAfter,
                 function(spawnErr) {
                     if (err) {
                         callback((spawnErr && spawnErr.message) || "uknown_error");
@@ -151,7 +155,7 @@ registerMessage<IPipeProcSystemInitMessage["data"], IPipeProcMessage["data"]>(me
                             const GC_INTERVAL = (data.options.gc &&
                                 (<{interval: number}>data.options.gc).interval) || 30000;
                             let gcRunning = false;
-                            setInterval(function() {
+                            gcInterval = setInterval(function() {
                                 if (gcRunning) return;
                                 d("gc will start running...");
                                 gcRunning = true;
@@ -505,31 +509,35 @@ const initIPCListener = function(e: IPipeProcInitIPCMessage) {
 const shutdownListener = function(e: IPipeProcMessage) {
     if (e.type === "system_shutdown") {
         d("shutting down...");
-        serverSocket.close();
-        process.removeListener("message", shutdownListener);
-        runShutdownHooks(db, systemState, activeWorkers, function(err) {
-            if (err) {
-                if (process && typeof process.send === "function") {
-                    process.send(prepareMessage({
-                        type: "system_closed_error",
-                        msgKey: e.msgKey,
-                        errStatus: (err && err.message) || "uknown_error"
-                    }));
-                }
-                process.exit(1);
-            } else {
-                if (process && typeof process.send === "function") {
-                    process.send(prepareMessage({
-                        type: "system_closed",
-                        msgKey: e.msgKey
-                    }));
-                }
-                process.exit(0);
+        stopWriteBuffer(function() {
+            serverSocket.close();
+            if (gcInterval) {
+                d("stopping gc");
+                clearInterval(gcInterval);
             }
+            process.removeListener("message", shutdownListener);
+            runShutdownHooks(db, systemState, activeWorkers, function(err) {
+                if (err) {
+                    if (process && typeof process.send === "function") {
+                        process.send(prepareMessage({
+                            type: "system_closed_error",
+                            msgKey: e.msgKey,
+                            errStatus: (err && err.message) || "uknown_error"
+                        }));
+                    }
+                } else {
+                    if (process && typeof process.send === "function") {
+                        process.send(prepareMessage({
+                            type: "system_closed",
+                            msgKey: e.msgKey
+                        }));
+                    }
+                }
+            });
         });
     }
 };
 
 process.on("message", initIPCListener);
 process.on("message", shutdownListener);
-startWriteBuffer(writeBuffer);
+stopWriteBuffer = startWriteBuffer(writeBuffer);

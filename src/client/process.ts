@@ -1,4 +1,3 @@
-import {fork as forkProcess, ChildProcess} from "child_process";
 import debug from "debug";
 import {prepareMessage, IPipeProcMessage, IPipeProcIPCEstablishedMessage, IPipeProcPingMessageReply} from "../common/messages";
 import {IPipeProcClient} from ".";
@@ -6,7 +5,8 @@ import {tmpdir} from "os";
 import {readFileSync} from "fs";
 
 import {connect as socketConnect} from "../socket/connect";
-import {EventEmitter} from "events";
+import {Monitor} from "forever-monitor";
+import {join as pathJoin} from "path";
 
 const d = debug("pipeproc:client");
 
@@ -23,6 +23,7 @@ export function spawn(
         location: string,
         workers: number,
         workerConcurrency: number,
+        workerRestartAfter: number,
         gc?: {minPruneTime?: number, interval?: number} | boolean,
         tls: {
             server: {
@@ -41,7 +42,15 @@ export function spawn(
 ): void {
     if (client.pipeProcNode) return callback(null, "node_already_active");
     d("spawning node...");
-    client.pipeProcNode = forkProcess(`${__dirname}/../node/pipeProc`);
+    client.pipeProcNode = new Monitor(pathJoin(__dirname, "..", "node", "pipeProc.js"), {
+        //@ts-ignore
+        fork: true,
+        watch: false,
+        spawnWith: {detached: true},
+        args: ["--color"],
+        max: 3
+    });
+    (<Monitor>client.pipeProcNode).start();
     let connectionAddress: string;
     if (options.address) {
         connectionAddress = options.address;
@@ -50,63 +59,67 @@ export function spawn(
     } else {
         connectionAddress = `ipc://${tmpdir()}/pipeproc.${options.namespace}`;
     }
-    const initIPCMessage = prepareMessage({type: "init_ipc", data: {address: connectionAddress, tls: options.tls}});
-    const ipcEstablishedListener = function(e: IPipeProcIPCEstablishedMessage) {
-        if ((e.type !== "ipc_established") || e.msgKey !== initIPCMessage.msgKey) return;
-        d("internal IPC enabled");
-        if (e.errStatus) {
-            return callback(new Error(e.errStatus));
-        }
-        try {
-            if (options.tls) {
-                options.tls.client.ca = readFileSync(options.tls.client.ca, "utf8");
-                options.tls.client.key = readFileSync(options.tls.client.key, "utf8");
-                options.tls.client.cert = readFileSync(options.tls.client.cert, "utf8");
+    function spawnNode() {
+        const initIPCMessage = prepareMessage({type: "init_ipc", data: {address: connectionAddress, tls: options.tls}});
+        const ipcEstablishedListener = function(e: IPipeProcIPCEstablishedMessage) {
+            if ((e.type !== "ipc_established") || e.msgKey !== initIPCMessage.msgKey) return;
+            d("internal IPC enabled");
+            if (e.errStatus) {
+                return callback(new Error(e.errStatus));
             }
-        } catch (e) {
-            return callback(e);
-        }
-        (<ChildProcess>client.pipeProcNode).removeListener("message", ipcEstablishedListener);
-        socketConnect(connectionAddress, {tls: options.tls && options.tls.client}, function(err, connectSocket) {
-            if (err) {
-                return callback(err);
-            }
-            if (!connectSocket) {
-                return callback(new Error("Failed to create socket"));
-            }
-            client.connectSocket = connectSocket;
-            if (options.address) {
-                d("using connection address:", options.address);
-            } else if (options.tcp) {
-                d("tcp connection established on host:", options.tcp.host, "and port:", options.tcp.port);
-            } else {
-                d("ipc established under namespace:", options.namespace);
-            }
-            //messageMap listener init
-            client.connectSocket.onMessage<IPipeProcMessage>(function(message) {
-                if (typeof client.messageMap[message.msgKey] === "function") {
-                    client.messageMap[message.msgKey](message);
+            try {
+                if (options.tls) {
+                    options.tls.client.ca = readFileSync(options.tls.client.ca, "utf8");
+                    options.tls.client.key = readFileSync(options.tls.client.key, "utf8");
+                    options.tls.client.cert = readFileSync(options.tls.client.cert, "utf8");
                 }
-                delete client.messageMap[message.msgKey];
-            });
-            const ipcd = debug("pipeproc:ipc:client");
-            client.connectSocket.onError(function(ipcError) {
-                ipcd("client IPC error:", ipcError);
-            });
-            const systemInitMessage = prepareMessage({type: "system_init", data: {options: options}});
-            client.messageMap[systemInitMessage.msgKey] = function(systemInitReply: IPipeProcMessage) {
-                if (systemInitReply.type === "system_ready") {
-                    callback(null, "spawned_and_connected");
-                } else if (systemInitReply.type === "system_ready_error") {
-                    callback(new Error(e.errStatus));
+            } catch (e) {
+                return callback(e);
+            }
+            (<Monitor>client.pipeProcNode).child.removeListener("message", ipcEstablishedListener);
+            socketConnect(connectionAddress, {tls: options.tls && options.tls.client}, function(err, connectSocket) {
+                if (err) {
+                    return callback(err);
                 }
-            };
-            d("sending system_init message");
-            sendMessageToNode(client, systemInitMessage);
-        });
-    };
-    (<ChildProcess>client.pipeProcNode).on("message", ipcEstablishedListener);
-    (<ChildProcess>client.pipeProcNode).send(initIPCMessage);
+                if (!connectSocket) {
+                    return callback(new Error("Failed to create socket"));
+                }
+                client.connectSocket = connectSocket;
+                if (options.address) {
+                    d("using connection address:", options.address);
+                } else if (options.tcp) {
+                    d("tcp connection established on host:", options.tcp.host, "and port:", options.tcp.port);
+                } else {
+                    d("ipc established under namespace:", options.namespace);
+                }
+                //messageMap listener init
+                client.connectSocket.onMessage<IPipeProcMessage>(function(message) {
+                    if (typeof client.messageMap[message.msgKey] === "function") {
+                        client.messageMap[message.msgKey](message);
+                    }
+                    delete client.messageMap[message.msgKey];
+                });
+                const ipcd = debug("pipeproc:ipc:client");
+                client.connectSocket.onError(function(ipcError) {
+                    ipcd("client IPC error:", ipcError);
+                });
+                const systemInitMessage = prepareMessage({type: "system_init", data: {options: options}});
+                client.messageMap[systemInitMessage.msgKey] = function(systemInitReply: IPipeProcMessage) {
+                    if (systemInitReply.type === "system_ready") {
+                        callback(null, "spawned_and_connected");
+                    } else if (systemInitReply.type === "system_ready_error") {
+                        callback(new Error(e.errStatus));
+                    }
+                };
+                d("sending system_init message");
+                sendMessageToNode(client, systemInitMessage);
+            });
+        };
+        (<Monitor>client.pipeProcNode).child.on("message", ipcEstablishedListener);
+        (<Monitor>client.pipeProcNode).child.send(initIPCMessage);
+    }
+    (<Monitor>client.pipeProcNode).on("restart", spawnNode);
+    spawnNode();
 }
 
 export function connect(
@@ -198,7 +211,7 @@ export function connect(
             }
         };
         d("sending ping message");
-        client.connectSocket.send(pingMessage);
+        sendMessageToNode(client, pingMessage);
     });
 }
 
@@ -209,12 +222,13 @@ export function shutdown(
     if (client.connectSocket) {
         client.connectSocket.close();
     }
-    if (client.pipeProcNode instanceof EventEmitter) {
+    if (client.pipeProcNode instanceof Monitor) {
         d("closing node...");
         const shutDownMessage = prepareMessage({type: "system_shutdown"});
         const systemClosedListener = function(e: IPipeProcMessage) {
             if (e.msgKey !== shutDownMessage.msgKey) return;
-            (<ChildProcess>client.pipeProcNode).removeListener("message", systemClosedListener);
+            (<Monitor>client.pipeProcNode).child.removeListener("message", systemClosedListener);
+            (<Monitor>client.pipeProcNode).stop();
             delete client.pipeProcNode;
             delete client.connectSocket;
             if (e.type === "system_closed") {
@@ -224,8 +238,8 @@ export function shutdown(
                 callback(new Error(e.errStatus || "uknown_error"));
             }
         };
-        (<ChildProcess>client.pipeProcNode).on("message", systemClosedListener);
-        (<ChildProcess>client.pipeProcNode).send(shutDownMessage);
+        (<Monitor>client.pipeProcNode).child.on("message", systemClosedListener);
+        (<Monitor>client.pipeProcNode).child.send(shutDownMessage);
     } else if (client.pipeProcNode) {
         d("disconnected");
         delete client.pipeProcNode;

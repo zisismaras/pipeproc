@@ -1,3 +1,4 @@
+process.env.DEBUG_COLORS = "true";
 import {spawn, shutdown, connect} from "./process";
 import {
     commit,
@@ -19,10 +20,19 @@ import {
     ILiveProc
 } from "./liveproc";
 import {IProc} from "../node/proc";
-import {ChildProcess} from "child_process";
 import {ConnectSocket} from "../socket/connect";
 import {resolve as pathResolve} from "path";
 import {existsSync} from "fs";
+import {Monitor} from "forever-monitor";
+import {ChildProcess} from "child_process";
+
+//tslint:disable interface-name
+declare module "forever-monitor" {
+    interface Monitor {
+        child: ChildProcess;
+    }
+}
+//tslint:enable interface-name
 
 export interface ICommitLog {
     topic: string;
@@ -30,7 +40,7 @@ export interface ICommitLog {
 }
 
 export interface IPipeProcClient {
-    pipeProcNode?: ChildProcess | {};
+    pipeProcNode?: Monitor | {};
     connectSocket?: ConnectSocket;
     messageMap: {
         //tslint:disable no-any
@@ -64,6 +74,7 @@ export interface IPipeProcClient {
             location?: string,
             workers?: number,
             workerConcurrency?: number,
+            workerRestartAfter?: number,
             gc?: {minPruneTime?: number, interval?: number} | boolean
         }
     ): Promise<string>;
@@ -209,6 +220,12 @@ export function PipeProc(): IPipeProcClient {
             } else {
                 workerConcurrency = 1;
             }
+            let workerRestartAfter: number;
+            if (options && typeof options.workerRestartAfter === "number" && options.workerRestartAfter >= 0) {
+                workerRestartAfter = options.workerRestartAfter;
+            } else {
+                workerRestartAfter = 0;
+            }
             let tls: {
                 server: {
                     key: string;
@@ -267,6 +284,7 @@ export function PipeProc(): IPipeProcClient {
                     location: (options && options.location) || "./pipeproc_data",
                     workers: workers,
                     workerConcurrency: workerConcurrency,
+                    workerRestartAfter: workerRestartAfter,
                     gc: (options && options.gc) || undefined,
                     tls: tls
                 }, function(err, status) {

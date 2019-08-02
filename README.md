@@ -148,6 +148,8 @@ spawn(
         workers?: number,
         //the number of processors that can be run concurrently by each worker, defaults to 1
         workerConcurrency?: number,
+        //restart any worker that reaches X systemProc executions, useful to mitigate memory leaks, defaults to 0 (no restarts)
+        workerRestartAfter?: number,
         //tune the garbage collector settings (check the gc section below)
         gc?: {minPruneTime?: number, interval?: number} | boolean
     }

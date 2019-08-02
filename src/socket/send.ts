@@ -1,4 +1,7 @@
 import {Socket} from "net";
+import debug from "debug";
+
+const d = debug("pipeproc:socket:send");
 
 export function getSender(
     socket: Socket
@@ -14,14 +17,21 @@ export function getSender(
             msg = JSON.stringify(message);
         }
         msg += "%EOM%";
-        const flushed = socket.write(msg, "utf8", function() {
-            if (!flushed) {
+        try {
+            const flushed = socket.write(msg, "utf8", function() {
+                if (!flushed) {
+                    if (callback && typeof callback === "function") {
+                        callback();
+                    }
+                }
+            });
+            if (flushed) {
                 if (callback && typeof callback === "function") {
-                    callback();
+                    setImmediate(callback);
                 }
             }
-        });
-        if (flushed) {
+        } catch (e) {
+            d(e);
             if (callback && typeof callback === "function") {
                 setImmediate(callback);
             }

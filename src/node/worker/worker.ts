@@ -42,12 +42,15 @@ type ProcessorFn = (
 
 let procList: IProc[] = [];
 let systemProcList: ISystemProc[] = [];
+let totalInvocations = 0;
+let readyToStop = 0;
 
 process.on("message", function(e: IPipeProcWorkerInitMessage) {
     if (e.type === "worker_init") {
         pipeProcClient.connect({isWorker: true, socket: e.data.address, tls: e.data.tls})
         .then(function(status) {
             d("worker concurrency:", e.data.workerConcurrency);
+            d("worker restartAfter:", e.data.workerRestartAfter);
             for (let i = 0; i < e.data.workerConcurrency; i += 1) {
                 const strategy = new ExponentialStrategy({
                     randomisationFactor: 0.5,
@@ -56,11 +59,17 @@ process.on("message", function(e: IPipeProcWorkerInitMessage) {
                     factor: 2
                 });
                 forever(function(next) {
+                    if (e.data.workerRestartAfter && totalInvocations >= e.data.workerRestartAfter) {
+                        return next("stop");
+                    }
                     pipeProcClient.availableProc(procList)
                     .then(function(result) {
                         if (result && result.procName && result.log) {
                             const myProc = procList.find(pr => pr.name === result.procName);
                             procExec(<IProc>myProc, result.log, function(err) {
+                                if (e.data.workerRestartAfter) {
+                                    totalInvocations += 1;
+                                }
                                 if (err) {
                                     d(err);
                                     setTimeout(next, strategy.next());
@@ -78,7 +87,16 @@ process.on("message", function(e: IPipeProcWorkerInitMessage) {
                         d(err);
                         setTimeout(next, strategy.next());
                     });
-                }, function() {});
+                }, async function(signal) {
+                    if (signal === "stop") {
+                        readyToStop += 1;
+                    }
+                    if (readyToStop === e.data.workerConcurrency) {
+                        d("restarting after:", totalInvocations, "invocations");
+                        await pipeProcClient.shutdown();
+                        process.removeAllListeners();
+                    }
+                });
             }
             sendMessageToNode(prepareMessage({
                 type: "worker_connected",
