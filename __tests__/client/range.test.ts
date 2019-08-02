@@ -147,6 +147,11 @@ describe("using range", function() {
         });
     });
 
+    test("length() should return the correct length of the topic", async function() {
+        const length = await client.length("my_topic");
+        expect(length).toBe(3);
+    });
+
 });
 
 function commitSomeLogs(client) {
