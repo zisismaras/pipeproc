@@ -1,6 +1,6 @@
 {
   "name": "pipeproc",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "license": "BSD-3-Clause",
   "author": {
     "name": "Zisis Maras",
@@ -52,7 +52,6 @@
     }
   },
   "devDependencies": {
-    "@types/forever-monitor": "1.7.4",
     "@types/jest": "24.0.15",
     "@types/rimraf": "2.0.2",
     "eslint": "4.19.1",
@@ -74,6 +73,7 @@
     "@types/leveldown": "1.7.1",
     "@types/node": "10.5.4",
     "@types/uuid": "3.4.3",
+    "@types/forever-monitor": "1.7.4",
     "async": "2.6.3",
     "backoff": "2.5.0",
     "debug": "3.1.0",
