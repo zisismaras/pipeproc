@@ -1,6 +1,6 @@
 {
   "name": "pipeproc",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "license": "BSD-3-Clause",
   "author": {
     "name": "Zisis Maras",
@@ -23,7 +23,7 @@
   ],
   "scripts": {
     "test": "(tsc || echo \"compiled\") && jest --ci",
-    "prepublishOnly": "tsc --build --clean && tsc --build && rm -rf ./lib/typings && cp -r ./src/typings ./lib/typings"
+    "prepublishOnly": "rm -rf ./lib && tsc --build --clean && tsc --build && rm -rf ./lib/typings && cp -r ./src/typings ./lib/typings"
   },
   "jest": {
     "transform": {

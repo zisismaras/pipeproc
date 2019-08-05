@@ -95,6 +95,7 @@ process.on("message", function(e: IPipeProcWorkerInitMessage) {
                         d("restarting after:", totalInvocations, "invocations");
                         await pipeProcClient.shutdown();
                         process.removeAllListeners();
+                        process.exit(0);
                     }
                 });
             }
