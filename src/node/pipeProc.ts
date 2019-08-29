@@ -59,7 +59,7 @@ const d = debug("pipeproc:node");
 
 let db: LevelDOWN.LevelDown;
 let connectionAddress: string;
-let serverSocket: ServerSocket;
+let serverSocket: ServerSocket | undefined;
 let clientTLS: {
     key: string;
     cert: string;
@@ -510,7 +510,9 @@ const shutdownListener = function(e: IPipeProcMessage) {
     if (e.type === "system_shutdown") {
         d("shutting down...");
         stopWriteBuffer(function() {
-            serverSocket.close();
+            if (serverSocket) {
+                serverSocket.close();
+            }
             if (gcInterval) {
                 d("stopping gc");
                 clearInterval(gcInterval);
