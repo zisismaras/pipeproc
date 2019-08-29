@@ -391,7 +391,4 @@ describe("create procs with multiple 'from'", function() {
             });
         });
     });
-    it("should fail", function(done) {
-        done.fail(new Error("i always fail"));
-    });
 });
