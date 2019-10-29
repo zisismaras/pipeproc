@@ -120,7 +120,7 @@ describe("spawning a node using TLS", function() {
             }).then(function() {
                 done.fail("it should not be able to connect");
             }).catch(function(err) {
-                expect(err.code).toBe("ECONNRESET");
+                expect(err.message).toBe("connection timed-out");
                 done();
             });
         });
