@@ -37,7 +37,7 @@ export function restoreState(
             forever(function(next) {
                 iterator.next(function(err, key, value) {
                     if (err) return next(err);
-                    if (!key) return next("stop");
+                    if (!key) return next(new Error("stop"));
                     const topic = key.split("~~system~~#activeTopics#")[1];
                     if (key.indexOf("~~system~~#activeTopics#") > -1 && topic) {
                         activeTopics[topic] = {
@@ -47,9 +47,8 @@ export function restoreState(
                     }
                     next();
                 });
-                //@ts-ignore
-            }, function(status: {message?: string} | string | undefined) {
-                if (!status || typeof status === "string") {
+            }, function(status) {
+                if (!status || status.message === "stop") {
                     iterator.end(cb);
                 } else {
                     iterator.end(function() {
@@ -74,16 +73,15 @@ export function restoreState(
             forever(function(next) {
                 iterator.next(function(err, key, value) {
                     if (err) return next(err);
-                    if (!key) return next("stop");
+                    if (!key) return next(new Error("stop"));
                     const topic = key.split("~~system~~#currentTone#")[1];
                     if (key.indexOf("~~system~~#currentTone#") > -1 && topic) {
                         activeTopics[topic].currentTone = parseInt(value);
                     }
                     next();
                 });
-                //@ts-ignore
-            }, function(status: {message?: string} | string | undefined) {
-                if (!status || typeof status === "string") {
+            }, function(status) {
+                if (!status || status.message === "stop") {
                     iterator.end(cb);
                 } else {
                     iterator.end(function() {
@@ -108,7 +106,7 @@ export function restoreState(
             forever(function(next) {
                 iterator.next(function(err, key, value) {
                     if (err) return next(err);
-                    if (!key) return next("stop");
+                    if (!key) return next(new Error("stop"));
                     if (key.indexOf("~~system~~#proc#") === -1) return next();
                     const unprefixed = key.split("~~system~~#proc#")[1];
                     const topic = unprefixed.split("#")[0];
@@ -140,9 +138,8 @@ export function restoreState(
                     }
                     next();
                 });
-                //@ts-ignore
-            }, function(status: {message?: string} | string | undefined) {
-                if (!status || typeof status === "string") {
+            }, function(status) {
+                if (!status || status.message === "stop") {
                     iterator.end(cb);
                 } else {
                     iterator.end(function() {
@@ -167,7 +164,7 @@ export function restoreState(
             forever(function(next) {
                 iterator.next(function(err, key, value) {
                     if (err) return next(err);
-                    if (!key) return next("stop");
+                    if (!key) return next(new Error("stop"));
                     if (key.indexOf("~~system~~#systemProc#") === -1) return next();
                     const unprefixed = key.split("~~system~~#systemProc#")[1];
                     const topic = unprefixed.split("#")[0];
@@ -188,9 +185,8 @@ export function restoreState(
                     }
                     next();
                 });
-                //@ts-ignore
-            }, function(status: {message?: string} | string | undefined) {
-                if (!status || typeof status === "string") {
+            }, function(status) {
+                if (!status || status.message === "stop") {
                     iterator.end(cb);
                 } else {
                     iterator.end(function() {
@@ -210,7 +206,6 @@ export function restoreState(
         }
     ], function(err) {
         if (err) {
-            //@ts-ignore
             callback(err);
         } else {
             callback(null);

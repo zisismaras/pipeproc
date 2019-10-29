@@ -26,13 +26,12 @@ export function destroyProc(
     forever(function(next) {
         iterator.next(function(err, key) {
             if (err) return next(err);
-            if (!key) return next("stop");
+            if (!key) return next(new Error("stop"));
             keys.push(key);
             asyncImmediate(next);
         });
-        //@ts-ignore
-    }, function(status: {message?: string} | string | undefined) {
-        if (!status || typeof status === "string") {
+    }, function(status) {
+        if (!status || status.message === "stop") {
             iterator.end(function(iteratorEndErr) {
                 if (iteratorEndErr) return callback(iteratorEndErr);
                 const tx = transaction(db);

@@ -71,7 +71,7 @@
     "@types/backoff": "2.5.1",
     "@types/debug": "0.0.30",
     "@types/leveldown": "1.7.1",
-    "@types/node": "10.5.4",
+    "@types/node": "10.17.0",
     "@types/uuid": "3.4.3",
     "@types/forever-monitor": "1.7.4",
     "async": "3.1.0",

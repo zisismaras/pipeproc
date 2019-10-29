@@ -32,7 +32,7 @@ export function waitForProcs(
             }
         }, function(_err, allFlushed) {
             if (allFlushed) {
-                next("stop");
+                next(new Error("stop"));
             } else {
                 setTimeout(function() {
                     next();
