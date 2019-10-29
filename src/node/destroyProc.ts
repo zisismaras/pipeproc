@@ -1,12 +1,12 @@
 import debug from "debug";
-import LevelDOWN from "leveldown";
+import {LevelDown as LevelDOWN, Bytes} from "leveldown";
 import {IProc} from "./proc";
 import {transaction} from "./transaction";
 import {forever, setImmediate as asyncImmediate} from "async";
 const d = debug("pipeproc:node");
 
 export function destroyProc(
-    db: LevelDOWN.LevelDown,
+    db: LevelDOWN,
     activeProcs: IProc[],
     procName: string,
     callback: (err?: Error|null, proc?: IProc) => void
@@ -22,7 +22,7 @@ export function destroyProc(
         keyAsBuffer: false,
         limit: -1
     });
-    const keys: string[] = [];
+    const keys: Bytes[] = [];
     forever(function(next) {
         iterator.next(function(err, key) {
             if (err) return next(err);
@@ -36,7 +36,7 @@ export function destroyProc(
                 if (iteratorEndErr) return callback(iteratorEndErr);
                 const tx = transaction(db);
                 tx.add(keys.map(key => {
-                    return {key: key};
+                    return {key: key.toString()};
                 }));
                 tx.commitDelete(function(err) {
                     if (err) {

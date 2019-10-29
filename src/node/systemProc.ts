@@ -1,5 +1,5 @@
 import debug from "debug";
-import LevelDOWN from "leveldown";
+import {LevelDown as LevelDOWN, Bytes} from "leveldown";
 import {IProc, createProc} from "./proc";
 import {IWorker} from "./workerManager";
 import {sendMessageToWorker} from "./messaging";
@@ -13,7 +13,7 @@ import {transaction} from "./transaction";
 const d = debug("pipeproc:node");
 
 export interface ISystemProc {
-    [index: string]: string | string[] | true | undefined;
+    [index: string]: string | string[] | true | Bytes | undefined;
     name: string;
     topic: string;
     inlineProcessor?: string;
@@ -22,7 +22,7 @@ export interface ISystemProc {
 }
 
 export function systemProc(
-    db: LevelDOWN.LevelDown,
+    db: LevelDOWN,
     activeProcs: IProc[],
     activeSystemProcs: ISystemProc[],
     activeWorkers: IWorker[],
@@ -119,7 +119,7 @@ export function systemProc(
 }
 
 function createSystemProcs(
-    db: LevelDOWN.LevelDown,
+    db: LevelDOWN,
     options: {
         name: string,
         offset: string,

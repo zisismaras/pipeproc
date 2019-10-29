@@ -1,11 +1,11 @@
 import debug from "debug";
-import LevelDOWN from "leveldown";
+import {LevelDown as LevelDOWN, Bytes} from "leveldown";
 import MemDOWN from "memdown";
 
 const d = debug("pipeproc:node:transaction");
 export interface ITransaction<T> {
     TRANSACTION: Symbol;
-    _updates: {key: string, value: string}[];
+    _updates: {key: string, value: Bytes}[];
     _resultFns: {
         [key: string]: {
             fns: (() => T)[],
@@ -23,15 +23,15 @@ export interface ITransaction<T> {
     ): void;
     add(u: {
         key: string;
-        value?: string;
+        value?: Bytes;
     } | {
         key: string;
-        value?: string;
+        value?: Bytes;
     }[] | ITransaction<T> | ITransaction<T>[]): void;
     done(resultCb: () => T, resultBucket?: string): void;
 }
 
-export function transaction<T>(db: LevelDOWN.LevelDown): ITransaction<T> {
+export function transaction<T>(db: LevelDOWN): ITransaction<T> {
     d("starting new transaction...");
     return {
         TRANSACTION: Symbol("PIPEPROC_TRANSACTION"),
@@ -45,7 +45,7 @@ export function transaction<T>(db: LevelDOWN.LevelDown): ITransaction<T> {
         commitUpdate: function(callback) {
             if (this._updates.length === 0) return callback();
             d("commiting update...");
-            const updates: LevelDOWN.Batch[] = this._updates.map(u => {
+            const updates = this._updates.map(u => {
                 //tslint:disable no-object-literal-type-assertion prefer-type-cast
                 return {type: "put", key: u.key, value: u.value} as {type: "put", key: string, value: string};
                 //tslint: enable
@@ -101,7 +101,7 @@ export function transaction<T>(db: LevelDOWN.LevelDown): ITransaction<T> {
         commitDelete: function(callback) {
             if (this._updates.length === 0) return callback();
             d("commiting delete...");
-            const updates: LevelDOWN.DelBatch[] = this._updates.map(u => {
+            const updates = this._updates.map(u => {
                 //tslint:disable no-object-literal-type-assertion prefer-type-cast
                 return {type: "del", key: u.key} as {type: "del", key: string};
                 //tslint: enable

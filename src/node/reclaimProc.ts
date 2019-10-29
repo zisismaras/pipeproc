@@ -1,12 +1,12 @@
 import debug from "debug";
-import LevelDOWN from "leveldown";
+import {LevelDown as LevelDOWN} from "leveldown";
 import {transaction} from "./transaction";
 import {IProc} from "./proc";
 import {disableProc} from "./resumeDisableProc";
 const d = debug("pipeproc:node");
 
 export function reclaimProc(
-    db: LevelDOWN.LevelDown,
+    db: LevelDOWN,
     activeProcs: IProc[],
     procName: string,
     callback: (err?: Error|null, lastClaimedRange?: string) => void
@@ -49,7 +49,7 @@ export function reclaimProc(
 }
 
 function executeStrategy(
-    db: LevelDOWN.LevelDown,
+    db: LevelDOWN,
     activeProcs: IProc[],
     myProc: IProc,
     callback: (err?: Error) => void

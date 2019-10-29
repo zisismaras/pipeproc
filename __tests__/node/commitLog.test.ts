@@ -1,7 +1,7 @@
 //tslint:disable
 import "jest-extended";
 //tslint:enable
-import LevelDOWN from "leveldown";
+import {LevelDown as LevelDOWN} from "leveldown";
 import MemDOWN from "memdown";
 import {parallel} from "async";
 import {commitLog} from "../../src/node/commitLog";
@@ -11,7 +11,7 @@ const LOG_ID_FORMAT = /^([0-9]{13}-[0-9]+)$/;
 
 describe("add a single log", function() {
     test("the log should have a valid format", function(done) {
-        const db: LevelDOWN.LevelDown = MemDOWN();
+        const db: LevelDOWN = MemDOWN();
         const activeTopics: IActiveTopics = {};
         commitLog(db, activeTopics, {
             topic: "my_topic",
@@ -23,7 +23,7 @@ describe("add a single log", function() {
         });
     });
     test("the first log should have a tone number of 0", function(done) {
-        const db: LevelDOWN.LevelDown = MemDOWN();
+        const db: LevelDOWN = MemDOWN();
         const activeTopics: IActiveTopics = {};
         commitLog(db, activeTopics, {
             topic: "my_topic",
@@ -35,7 +35,7 @@ describe("add a single log", function() {
         });
     });
     test("the second log should have a tone number of 1", function(done) {
-        const db: LevelDOWN.LevelDown = MemDOWN();
+        const db: LevelDOWN = MemDOWN();
         const activeTopics: IActiveTopics = {};
         commitLog(db, activeTopics, {
             topic: "my_topic",
@@ -52,7 +52,7 @@ describe("add a single log", function() {
         });
     });
     test("it should return an error if there was a problem with leveldb batch", function(done) {
-        const db: LevelDOWN.LevelDown = MemDOWN();
+        const db: LevelDOWN = MemDOWN();
         const activeTopics: IActiveTopics = {};
         //@ts-ignore
         db.batch = jest.fn(function(err, callback) {
@@ -69,7 +69,7 @@ describe("add a single log", function() {
         });
     });
     test("it should return an error if there was a problem with leveldb put", function(done) {
-        const db: LevelDOWN.LevelDown = MemDOWN();
+        const db: LevelDOWN = MemDOWN();
         const activeTopics: IActiveTopics = {};
         //@ts-ignore
         db.batch = jest.fn(function(err, callback) {
@@ -94,7 +94,7 @@ describe("add a single log", function() {
 
 describe("add multiple logs to the same topic", function() {
     test("it should return an array of ids", function(done) {
-        const db: LevelDOWN.LevelDown = MemDOWN();
+        const db: LevelDOWN = MemDOWN();
         const activeTopics: IActiveTopics = {};
         commitLog(db, activeTopics, [{
             topic: "my_topic",
@@ -113,7 +113,7 @@ describe("add multiple logs to the same topic", function() {
         });
     });
     test("they should have a valid format", function(done) {
-        const db: LevelDOWN.LevelDown = MemDOWN();
+        const db: LevelDOWN = MemDOWN();
         const activeTopics: IActiveTopics = {};
         commitLog(db, activeTopics, [{
             topic: "my_topic",
@@ -137,7 +137,7 @@ describe("add multiple logs to the same topic", function() {
         });
     });
     test("the ids should have a correct incrementing tone number", function(done) {
-        const db: LevelDOWN.LevelDown = MemDOWN();
+        const db: LevelDOWN = MemDOWN();
         const activeTopics: IActiveTopics = {};
         commitLog(db, activeTopics, [{
             topic: "my_topic",
@@ -161,7 +161,7 @@ describe("add multiple logs to the same topic", function() {
         });
     });
     test("it should return an error if there was a problem with leveldb batch", function(done) {
-        const db: LevelDOWN.LevelDown = MemDOWN();
+        const db: LevelDOWN = MemDOWN();
         const activeTopics: IActiveTopics = {};
         //@ts-ignore
         db.batch = jest.fn(function(err, callback) {
@@ -184,7 +184,7 @@ describe("add multiple logs to the same topic", function() {
         });
     });
     test("it should return an error if there was a problem with leveldb put", function(done) {
-        const db: LevelDOWN.LevelDown = MemDOWN();
+        const db: LevelDOWN = MemDOWN();
         const activeTopics: IActiveTopics = {};
         //@ts-ignore
         db.batch = jest.fn(function(err, callback) {
@@ -212,7 +212,7 @@ describe("add multiple logs to the same topic", function() {
         });
     });
     test("toneId should increment correctly even if adding multiple logs at the same time", function(done) {
-        const db: LevelDOWN.LevelDown = MemDOWN();
+        const db: LevelDOWN = MemDOWN();
         const activeTopics: IActiveTopics = {};
         parallel([
             function(cb) {
@@ -264,7 +264,7 @@ describe("add multiple logs to the same topic", function() {
 
 describe("add multiple logs to different topics", function() {
     test("it should return an array of ids", function(done) {
-        const db: LevelDOWN.LevelDown = MemDOWN();
+        const db: LevelDOWN = MemDOWN();
         const activeTopics: IActiveTopics = {};
         commitLog(db, activeTopics, [{
             topic: "my_topic_0",
@@ -283,7 +283,7 @@ describe("add multiple logs to different topics", function() {
         });
     });
     test("they should have a valid format", function(done) {
-        const db: LevelDOWN.LevelDown = MemDOWN();
+        const db: LevelDOWN = MemDOWN();
         const activeTopics: IActiveTopics = {};
         commitLog(db, activeTopics, [{
             topic: "my_topic_0",
@@ -307,7 +307,7 @@ describe("add multiple logs to different topics", function() {
         });
     });
     test("the logs should start with a tone number of 0", function(done) {
-        const db: LevelDOWN.LevelDown = MemDOWN();
+        const db: LevelDOWN = MemDOWN();
         const activeTopics: IActiveTopics = {};
         commitLog(db, activeTopics, [{
             topic: "my_topic_0",
@@ -331,7 +331,7 @@ describe("add multiple logs to different topics", function() {
         });
     });
     test("the logs should retain their correct tone number", function(done) {
-        const db: LevelDOWN.LevelDown = MemDOWN();
+        const db: LevelDOWN = MemDOWN();
         const activeTopics: IActiveTopics = {};
         commitLog(db, activeTopics, [{
             topic: "my_topic_0",
@@ -367,7 +367,7 @@ describe("add multiple logs to different topics", function() {
         });
     });
     test("it should return an error if there was a problem with leveldb batch", function(done) {
-        const db: LevelDOWN.LevelDown = MemDOWN();
+        const db: LevelDOWN = MemDOWN();
         const activeTopics: IActiveTopics = {};
         //@ts-ignore
         db.batch = jest.fn(function(err, callback) {
@@ -390,7 +390,7 @@ describe("add multiple logs to different topics", function() {
         });
     });
     test("it should return an error if there was a problem with leveldb put", function(done) {
-        const db: LevelDOWN.LevelDown = MemDOWN();
+        const db: LevelDOWN = MemDOWN();
         const activeTopics: IActiveTopics = {};
         //@ts-ignore
         db.batch = jest.fn(function(err, callback) {
@@ -418,7 +418,7 @@ describe("add multiple logs to different topics", function() {
         });
     });
     test("toneId should increment correctly even if adding multiple logs at the same time", function(done) {
-        const db: LevelDOWN.LevelDown = MemDOWN();
+        const db: LevelDOWN = MemDOWN();
         const activeTopics: IActiveTopics = {};
         parallel([
             function(cb) {

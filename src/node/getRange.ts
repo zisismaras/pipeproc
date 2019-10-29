@@ -1,7 +1,7 @@
 import debug from "debug";
-import LevelDOWN from "leveldown";
+import {LevelDown as LevelDOWN, Bytes} from "leveldown";
 import {forever, series, setImmediate as asyncImmediate} from "async";
-import { IActiveTopics } from "./pipeProc";
+import {IActiveTopics} from "./pipeProc";
 
 const d = debug("pipeproc:node");
 const VALID_RANGE_INPUT = /^(([0-9]*)|(:{0,1}[0-9]+)|([0-9]+-[0-9]+))$/;
@@ -12,7 +12,7 @@ export interface IRangeResult {
 }
 
 export interface IRangeIteratorOptions {
-    [index: string]: string | number | boolean | undefined;
+    [index: string]: Bytes | number | boolean | undefined;
     "gt"?: string;
     "lt"?: string;
     "gte"?: string;
@@ -23,10 +23,10 @@ export interface IRangeIteratorOptions {
     reverse: boolean;
 }
 
-type Sdo = {isStartIdSearch: boolean, isEndIdSearch: boolean, startId: string, endId: string};
+type Sdo = {isStartIdSearch: boolean, isEndIdSearch: boolean, startId: Bytes, endId: Bytes};
 
 export function getRange(
-    db: LevelDOWN.LevelDown,
+    db: LevelDOWN,
     activeTopics: IActiveTopics,
     topic: string,
     start: string,
@@ -109,7 +109,7 @@ export function getRange(
                     if (err) return next(err);
                     if (!key) return next(new Error("stop"));
                     if (key.indexOf(prefix) > -1) {
-                        results.push({id: key.split(prefix)[1], data: value});
+                        results.push({id: key.toString().split(prefix)[1], data: value.toString()});
                     }
                     asyncImmediate(next);
                 });

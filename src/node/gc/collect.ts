@@ -1,4 +1,4 @@
-import LevelDOWN from "leveldown";
+import {LevelDown as LevelDOWN} from "leveldown";
 import {eachSeries, series} from "async";
 
 import {IActiveTopics} from "../pipeProc";
@@ -7,7 +7,7 @@ import {getRange} from "../getRange";
 import {transaction} from "../transaction";
 
 export function collect(
-    db: LevelDOWN.LevelDown,
+    db: LevelDOWN,
     activeTopics: IActiveTopics,
     activeProcs: IProc[],
     options: {minPruneTime: number},

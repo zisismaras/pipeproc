@@ -1,7 +1,7 @@
 //tslint:disable
 import "jest-extended";
 //tslint:enable
-import LevelDOWN from "leveldown";
+import {LevelDown as LevelDOWN} from "leveldown";
 import MemDOWN from "memdown";
 import {commitLog} from "../../src/node/commitLog";
 import {proc, IProc} from "../../src/node/proc";
@@ -12,7 +12,7 @@ import {reclaimProc} from "../../src/node/reclaimProc";
 import {disableProc} from "../../src/node/resumeDisableProc";
 
 describe("manual reclaim", function() {
-    let db: LevelDOWN.LevelDown;
+    let db: LevelDOWN;
     let activeTopics: IActiveTopics;
     let activeProcs: IProc[];
     let addedIds: string[];
@@ -159,7 +159,7 @@ describe("manual reclaim", function() {
 });
 
 describe("after an ack", function() {
-    let db: LevelDOWN.LevelDown;
+    let db: LevelDOWN;
     let activeTopics: IActiveTopics;
     let activeProcs: IProc[];
     let addedIds: string[];
@@ -221,7 +221,7 @@ describe("after an ack", function() {
 });
 
 describe("with timeout", function() {
-    let db: LevelDOWN.LevelDown;
+    let db: LevelDOWN;
     let activeTopics: IActiveTopics;
     let activeProcs: IProc[];
     let addedIds: string[];
@@ -291,7 +291,7 @@ describe("with timeout", function() {
 });
 
 function addLogsToTopic(
-    db: LevelDOWN.LevelDown,
+    db: LevelDOWN,
     activeTopics: IActiveTopics,
     callback: (err: Error|null, ids?: string|string[]) => void)
 : void {

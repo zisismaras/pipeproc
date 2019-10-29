@@ -1,7 +1,7 @@
 //tslint:disable
 import "jest-extended";
 //tslint:enable
-import LevelDOWN from "leveldown";
+import {LevelDown as LevelDOWN} from "leveldown";
 import MemDOWN from "memdown";
 import {commitLog} from "../../../src/node/commitLog";
 import {IActiveTopics} from "../../../src/node/pipeProc";
@@ -12,7 +12,7 @@ import {ack} from "../../../src/node/ack";
 
 describe("topics without procs", function() {
     if (process.platform !== "linux") return;
-    let db: LevelDOWN.LevelDown;
+    let db: LevelDOWN;
     let activeTopics: IActiveTopics;
     let activeProcs: IProc[];
     beforeEach(function(done) {
@@ -64,7 +64,7 @@ describe("topics without procs", function() {
 
 describe("topics with procs", function() {
     if (process.platform !== "linux") return;
-    let db: LevelDOWN.LevelDown;
+    let db: LevelDOWN;
     let activeTopics: IActiveTopics;
     let activeProcs: IProc[];
     beforeEach(function(done) {
@@ -313,7 +313,7 @@ describe("noop", function() {
 });
 
 function getAllLogs(
-    db: LevelDOWN.LevelDown,
+    db: LevelDOWN,
     activeTopics: IActiveTopics,
     callback: (err?: Error | null, results?: IRangeResult[]) => void) {
     getRange(db, activeTopics, "my_topic_0", "", "", -1, false, false, function(err, results) {
@@ -323,7 +323,7 @@ function getAllLogs(
 }
 
 function addLogsToTopic(
-    db: LevelDOWN.LevelDown,
+    db: LevelDOWN,
     activeTopics: IActiveTopics,
     timeout: number,
     callback: (err: Error|null, ids?: string|string[]) => void)

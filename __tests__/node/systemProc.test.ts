@@ -1,7 +1,7 @@
 //tslint:disable
 import "jest-extended";
 //tslint:enable
-import LevelDOWN from "leveldown";
+import {LevelDown as LevelDOWN} from "leveldown";
 import MemDOWN from "memdown";
 import {IProc, proc} from "../../src/node/proc";
 import {IActiveTopics} from "../../src/node/pipeProc";
@@ -9,7 +9,7 @@ import {ISystemProc, validateProcs, systemProc} from "../../src/node/systemProc"
 import {IWorker} from "../../src/node/workerManager";
 
 describe("validate procs with a single 'from'", function() {
-    let db: LevelDOWN.LevelDown;
+    let db: LevelDOWN;
     let activeTopics: IActiveTopics;
     let activeProcs: IProc[];
     beforeEach(function() {
@@ -64,7 +64,7 @@ describe("validate procs with a single 'from'", function() {
 });
 
 describe("validate procs with multiple 'from'", function() {
-    let db: LevelDOWN.LevelDown;
+    let db: LevelDOWN;
     let activeTopics: IActiveTopics;
     let activeProcs: IProc[];
     beforeEach(function() {
@@ -121,7 +121,7 @@ describe("validate procs with multiple 'from'", function() {
 });
 
 describe("create procs with a single 'from'", function() {
-    let db: LevelDOWN.LevelDown;
+    let db: LevelDOWN;
     let activeTopics: IActiveTopics;
     let activeProcs: IProc[];
     let activeSystemProcs: ISystemProc[];
@@ -274,7 +274,7 @@ describe("create procs with a single 'from'", function() {
 });
 
 describe("create procs with multiple 'from'", function() {
-    let db: LevelDOWN.LevelDown;
+    let db: LevelDOWN;
     let activeTopics: IActiveTopics;
     let activeProcs: IProc[];
     let activeSystemProcs: ISystemProc[];

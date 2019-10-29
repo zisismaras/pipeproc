@@ -1,6 +1,6 @@
 import debug from "debug";
 import {isAbsolute, resolve} from "path";
-import LevelDOWN from "leveldown";
+import LevelDown, {LevelDown as LevelDOWN} from "leveldown";
 import MemDOWN from "memdown";
 import {
     IPipeProcMessage,
@@ -57,7 +57,7 @@ import {ServerSocket} from "../socket/bind";
 
 const d = debug("pipeproc:node");
 
-let db: LevelDOWN.LevelDown;
+let db: LevelDOWN;
 let connectionAddress: string;
 let serverSocket: ServerSocket | undefined;
 let clientTLS: {
@@ -119,9 +119,9 @@ registerMessage<IPipeProcSystemInitMessage["data"], IPipeProcMessage["data"]>(me
                     location = resolve(data.options.location);
                 }
                 d("data location:", location);
-                db = LevelDOWN(location);
+                db = LevelDown(location);
             } else {
-                db = LevelDOWN("./pipeproc");
+                db = LevelDown("./pipeproc");
             }
         }
         restoreState(

@@ -1,14 +1,14 @@
 //tslint:disable
 import "jest-extended";
 //tslint:enable
-import LevelDOWN from "leveldown";
+import {LevelDown as LevelDOWN} from "leveldown";
 import MemDOWN from "memdown";
 import {proc, IProc} from "../../src/node/proc";
 import {IActiveTopics} from "../../src/node/pipeProc";
 import {destroyProc} from "../../src/node/destroyProc";
 import {commitLog} from "../../src/node/commitLog";
 
-let db: LevelDOWN.LevelDown;
+let db: LevelDOWN;
 let activeTopics: IActiveTopics;
 let activeProcs: IProc[];
 beforeEach(function(done) {

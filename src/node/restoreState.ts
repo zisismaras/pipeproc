@@ -1,5 +1,5 @@
 import debug from "debug";
-import LevelDOWN from "leveldown";
+import {LevelDown as LevelDOWN} from "leveldown";
 import {forever, series} from "async";
 import {IActiveTopics, ISystemState} from "./pipeProc";
 import {IProc} from "./proc";
@@ -8,7 +8,7 @@ import {ISystemProc} from "./systemProc";
 const d = debug("pipeproc:node");
 
 export function restoreState(
-    db: LevelDOWN.LevelDown,
+    db: LevelDOWN,
     activeTopics: IActiveTopics,
     systemState: ISystemState,
     activeProcs: IProc[],
@@ -38,11 +38,11 @@ export function restoreState(
                 iterator.next(function(err, key, value) {
                     if (err) return next(err);
                     if (!key) return next(new Error("stop"));
-                    const topic = key.split("~~system~~#activeTopics#")[1];
+                    const topic = key.toString().split("~~system~~#activeTopics#")[1];
                     if (key.indexOf("~~system~~#activeTopics#") > -1 && topic) {
                         activeTopics[topic] = {
                             currentTone: -1,
-                            createdAt: parseInt(value)
+                            createdAt: parseInt(value.toString())
                         };
                     }
                     next();
@@ -74,9 +74,9 @@ export function restoreState(
                 iterator.next(function(err, key, value) {
                     if (err) return next(err);
                     if (!key) return next(new Error("stop"));
-                    const topic = key.split("~~system~~#currentTone#")[1];
+                    const topic = key.toString().split("~~system~~#currentTone#")[1];
                     if (key.indexOf("~~system~~#currentTone#") > -1 && topic) {
-                        activeTopics[topic].currentTone = parseInt(value);
+                        activeTopics[topic].currentTone = parseInt(value.toString());
                     }
                     next();
                 });
@@ -108,14 +108,14 @@ export function restoreState(
                     if (err) return next(err);
                     if (!key) return next(new Error("stop"));
                     if (key.indexOf("~~system~~#proc#") === -1) return next();
-                    const unprefixed = key.split("~~system~~#proc#")[1];
+                    const unprefixed = key.toString().split("~~system~~#proc#")[1];
                     const topic = unprefixed.split("#")[0];
                     const procName = unprefixed.split("#")[1];
                     const procProperty = unprefixed.split("#")[2];
                     const myProc = activeProcs.find(p => p.name === procName);
                     let newProc: IProc;
                     if (myProc) {
-                        myProc[procProperty] = formatProcProperty(procProperty, value);
+                        myProc[procProperty] = formatProcProperty(procProperty, value.toString());
                     } else {
                         newProc = {
                             name: procName,
@@ -133,7 +133,7 @@ export function restoreState(
                             reclaimTimeout: 10000,
                             onMaxReclaimsReached: "disable"
                         };
-                        newProc[procProperty] = formatProcProperty(procProperty, value);
+                        newProc[procProperty] = formatProcProperty(procProperty, value.toString());
                         activeProcs.push(newProc);
                     }
                     next();
@@ -166,7 +166,7 @@ export function restoreState(
                     if (err) return next(err);
                     if (!key) return next(new Error("stop"));
                     if (key.indexOf("~~system~~#systemProc#") === -1) return next();
-                    const unprefixed = key.split("~~system~~#systemProc#")[1];
+                    const unprefixed = key.toString().split("~~system~~#systemProc#")[1];
                     const topic = unprefixed.split("#")[0];
                     const procName = unprefixed.split("#")[1];
                     const procProperty = unprefixed.split("#")[2];

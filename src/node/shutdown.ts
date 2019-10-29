@@ -1,4 +1,4 @@
-import LevelDOWN from "leveldown";
+import {LevelDown as LevelDOWN} from "leveldown";
 import {ISystemState} from "./pipeProc";
 import {IWorker} from "./workerManager";
 import debug from "debug";
@@ -6,7 +6,7 @@ import debug from "debug";
 const d = debug("pipeproc:node");
 
 export function runShutdownHooks(
-    db: LevelDOWN.LevelDown,
+    db: LevelDOWN,
     systemState: ISystemState,
     activeWorkers: IWorker[],
     callback: (err?: Error) => void

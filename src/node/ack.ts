@@ -1,12 +1,12 @@
 import debug from "debug";
-import LevelDOWN from "leveldown";
+import {LevelDown as LevelDOWN} from "leveldown";
 import {IProc} from "./proc";
 import {transaction} from "./transaction";
 
 const d = debug("pipeproc:node");
 
 export function ack(
-    db: LevelDOWN.LevelDown,
+    db: LevelDOWN,
     activeProcs: IProc[],
     procName: string,
     callback: (err?: Error|null, ackedLogId?: string) => void
@@ -32,7 +32,7 @@ export function ack(
 }
 
 export function prepareAck(
-    db: LevelDOWN.LevelDown,
+    db: LevelDOWN,
     myProc: IProc
 ) {
     const prefix = `~~system~~#proc#${myProc.topic}#${myProc.name}#`;
