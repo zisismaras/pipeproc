@@ -1,5 +1,6 @@
 //tslint:disable
 import "jest-extended";
+import {satisfies} from "semver";
 //tslint:enable
 import {PipeProc, IPipeProcClient} from "../../lib/client";
 import net from "net";
@@ -120,7 +121,13 @@ describe("spawning a node using TLS", function() {
             }).then(function() {
                 done.fail("it should not be able to connect");
             }).catch(function(err) {
-                expect(err.message).toBe("connection timed-out");
+                if (satisfies(process.version.replace("v", ""), ">=8.0.0 <10.0.0")) {
+                    expect(err.message).toBe("socket hang up");
+                } else if (satisfies(process.version.replace("v", ""), ">=10.0.0 <12.0.0")) {
+                    expect(err.message).toBe("Client network socket disconnected before secure TLS connection was established");
+                } else {
+                    expect(err.message).toBe("connection timed-out");
+                }
                 done();
             });
         });
