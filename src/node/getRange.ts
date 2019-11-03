@@ -1,7 +1,7 @@
 import debug from "debug";
-import LevelDOWN from "leveldown";
+import {LevelDown as LevelDOWN, Bytes} from "leveldown";
 import {forever, series, setImmediate as asyncImmediate} from "async";
-import { IActiveTopics } from "./pipeProc";
+import {IActiveTopics} from "./pipeProc";
 
 const d = debug("pipeproc:node");
 const VALID_RANGE_INPUT = /^(([0-9]*)|(:{0,1}[0-9]+)|([0-9]+-[0-9]+))$/;
@@ -12,7 +12,7 @@ export interface IRangeResult {
 }
 
 export interface IRangeIteratorOptions {
-    [index: string]: string | number | boolean | undefined;
+    [index: string]: Bytes | number | boolean | undefined;
     "gt"?: string;
     "lt"?: string;
     "gte"?: string;
@@ -23,10 +23,10 @@ export interface IRangeIteratorOptions {
     reverse: boolean;
 }
 
-type Sdo = {isStartIdSearch: boolean, isEndIdSearch: boolean, startId: string, endId: string};
+type Sdo = {isStartIdSearch: boolean, isEndIdSearch: boolean, startId: Bytes, endId: Bytes};
 
 export function getRange(
-    db: LevelDOWN.LevelDown,
+    db: LevelDOWN,
     activeTopics: IActiveTopics,
     topic: string,
     start: string,
@@ -34,7 +34,7 @@ export function getRange(
     limit: number,
     exclusive: boolean,
     reverse: boolean,
-    callback: (err?: {message?: string} | null, results?: IRangeResult[]) => void
+    callback: (err?: Error | null, results?: IRangeResult[]) => void
 ): void {
     if (!activeTopics[topic]) {
         return callback(new Error("invalid_topic"));
@@ -53,7 +53,6 @@ export function getRange(
     const sdo: Sdo = {isStartIdSearch: false, isEndIdSearch: false, startId: "", endId: ""};
     const results: IRangeResult[] = [];
     series([
-        //@ts-ignore
         function(cb) {
             if (start.match(/:[0-9]+/)) {
                 sdo.isStartIdSearch = true;
@@ -74,7 +73,6 @@ export function getRange(
                 cb();
             }
         },
-        //@ts-ignore
         function(cb) {
             if (end.match(/:[0-9]+/)) {
                 sdo.isEndIdSearch = true;
@@ -95,7 +93,6 @@ export function getRange(
                 cb();
             }
         },
-        //@ts-ignore
         function(cb) {
             const iteratorOptions = getIteratorOptions(
                 prefix,
@@ -110,22 +107,21 @@ export function getRange(
             forever(function(next) {
                 iterator.next(function(err, key, value) {
                     if (err) return next(err);
-                    if (!key) return next("stop");
+                    if (!key) return next(new Error("stop"));
                     if (key.indexOf(prefix) > -1) {
-                        results.push({id: key.split(prefix)[1], data: value});
+                        results.push({id: key.toString().split(prefix)[1], data: value.toString()});
                     }
                     asyncImmediate(next);
                 });
-                //@ts-ignore
-            }, function(status: {message?: string} | string | undefined) {
-                if (!status || typeof status === "string") {
+            }, function(status) {
+                if (!status || status.message === "stop") {
                     iterator.end(cb);
                 } else {
                     cb(status);
                 }
             });
         }
-    ], function(err: {message?: string} | undefined) {
+    ], function(err) {
         if (err) {
             callback(err);
         } else {

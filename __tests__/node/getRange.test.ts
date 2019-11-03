@@ -1,7 +1,7 @@
 //tslint:disable
 import "jest-extended";
 //tslint:enable
-import LevelDOWN from "leveldown";
+import {LevelDown as LevelDOWN} from "leveldown";
 import MemDOWN from "memdown";
 import {eachSeries} from "async";
 import {commitLog} from "../../src/node/commitLog";
@@ -9,7 +9,7 @@ import {getRange} from "../../src/node/getRange";
 import {IActiveTopics} from "../../src/node/pipeProc";
 
 describe("get logs by full log id", function() {
-    let db: LevelDOWN.LevelDown;
+    let db: LevelDOWN;
     let activeTopics: IActiveTopics;
     let addedIds: string[];
     beforeEach(function(done) {
@@ -277,7 +277,7 @@ describe("get logs by full log id", function() {
 });
 
 describe("get logs by timestamp only", function() {
-    let db: LevelDOWN.LevelDown;
+    let db: LevelDOWN;
     let activeTopics: IActiveTopics;
     let addedIds: string[];
     let timestamps: string[];
@@ -548,7 +548,7 @@ describe("get logs by timestamp only", function() {
 });
 
 describe("get logs by timestamp only (using the same timestamp)", function() {
-    let db: LevelDOWN.LevelDown;
+    let db: LevelDOWN;
     let activeTopics: IActiveTopics;
     let addedIds: string[];
     let timestamps: string[];
@@ -746,7 +746,7 @@ describe("get logs by timestamp only (using the same timestamp)", function() {
 });
 
 describe("get logs by tone id only", function() {
-    let db: LevelDOWN.LevelDown;
+    let db: LevelDOWN;
     let activeTopics: IActiveTopics;
     let addedIds: string[];
     let toneIds: string[];
@@ -1048,7 +1048,7 @@ describe("get logs by tone id only", function() {
 });
 
 function addLogsToTopic(
-    db: LevelDOWN.LevelDown,
+    db: LevelDOWN,
     activeTopics: IActiveTopics,
     callback: (err: Error|null, ids?: string|string[]) => void)
 : void {
@@ -1074,7 +1074,7 @@ function addLogsToTopic(
 }
 
 function addLogsToTopicWithDelay(
-    db: LevelDOWN.LevelDown,
+    db: LevelDOWN,
     activeTopics: IActiveTopics,
     callback: (err: Error|null, ids?: string|string[]) => void)
 : void {

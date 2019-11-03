@@ -55,7 +55,7 @@ export function createLiveProc(
                 factor: 2
             });
             forever(function(next) {
-                if (stop) return next("stop");
+                if (stop) return next(new Error("stop"));
                 if (processing) return setTimeout(next, strategy.next());
                 processing = true;
                 return getLog(function(err, result) {

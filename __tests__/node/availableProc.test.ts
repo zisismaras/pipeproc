@@ -1,7 +1,7 @@
 //tslint:disable
 import "jest-extended";
 //tslint:enable
-import LevelDOWN from "leveldown";
+import {LevelDown as LevelDOWN} from "leveldown";
 import MemDOWN from "memdown";
 import {commitLog} from "../../src/node/commitLog";
 import {proc as _proc, IProc, getAvailableProc as _getAvailableProc} from "../../src/node/proc";
@@ -17,7 +17,7 @@ const getAvailableProc = promisify(_getAvailableProc);
 const disableProc = promisify(_disableProc);
 
 describe("availableProc", function() {
-    let db: LevelDOWN.LevelDown;
+    let db: LevelDOWN;
     let activeTopics: IActiveTopics;
     let activeProcs: IProc[];
     let addedIds: string[];
@@ -337,7 +337,7 @@ describe("availableProc", function() {
 });
 
 function addLogsToTopic(
-    db: LevelDOWN.LevelDown,
+    db: LevelDOWN,
     activeTopics: IActiveTopics,
     callback: (err: Error|null, ids?: string|string[]) => void)
 : void {

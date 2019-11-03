@@ -60,7 +60,7 @@ process.on("message", function(e: IPipeProcWorkerInitMessage) {
                 });
                 forever(function(next) {
                     if (e.data.workerRestartAfter && totalInvocations >= e.data.workerRestartAfter) {
-                        return next("stop");
+                        return next(new Error("stop"));
                     }
                     pipeProcClient.availableProc(procList)
                     .then(function(result) {
@@ -88,7 +88,7 @@ process.on("message", function(e: IPipeProcWorkerInitMessage) {
                         setTimeout(next, strategy.next());
                     });
                 }, async function(signal) {
-                    if (signal === "stop") {
+                    if (signal && signal.message === "stop") {
                         readyToStop += 1;
                     }
                     if (readyToStop === e.data.workerConcurrency) {

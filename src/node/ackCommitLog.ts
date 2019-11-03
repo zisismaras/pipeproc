@@ -1,5 +1,5 @@
 import debug from "debug";
-import LevelDOWN from "leveldown";
+import {LevelDown as LevelDOWN} from "leveldown";
 import {IActiveTopics} from "./pipeProc";
 import {preCommit} from "./commitLog";
 import {prepareAck} from "./ack";
@@ -9,7 +9,7 @@ import { transaction } from "./transaction";
 const d = debug("pipeproc:node");
 
 export function ackCommitLog(
-    db: LevelDOWN.LevelDown,
+    db: LevelDOWN,
     activeTopics: IActiveTopics,
     activeProcs: IProc[],
     procName: string,

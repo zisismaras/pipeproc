@@ -3,7 +3,7 @@ import "jest-extended";
 import rimraf from "rimraf";
 //tslint:enable
 import {tmpdir} from "os";
-import LevelDOWN from "leveldown";
+import LevelDown, {LevelDown as LevelDOWN} from "leveldown";
 import MemDOWN from "memdown";
 import {commitLog} from "../../src/node/commitLog";
 import {restoreState} from "../../src/node/restoreState";
@@ -13,7 +13,7 @@ import {systemProc, ISystemProc} from "../../src/node/systemProc";
 import {IWorker} from "../../src/node/workerManager";
 
 describe("system init (disk)", function() {
-    const db: LevelDOWN.LevelDown = LevelDOWN(`${tmpdir()}/pipeproc_test_init`);
+    const db: LevelDOWN = LevelDown(`${tmpdir()}/pipeproc_test_init`);
     const activeTopics: IActiveTopics = {};
     const activeProcs: IProc[] = [];
     const systemState: ISystemState = {active: false};
@@ -154,7 +154,7 @@ describe("system init (in-memory)", function() {
 });
 
 function addLogsToTopic(
-    db: LevelDOWN.LevelDown,
+    db: LevelDOWN,
     activeTopics: IActiveTopics,
     callback: (err: Error|null, ids?: string|string[]) => void)
 : void {

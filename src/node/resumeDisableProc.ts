@@ -1,11 +1,11 @@
 import debug from "debug";
-import LevelDOWN from "leveldown";
+import {LevelDown as LevelDOWN} from "leveldown";
 import {IProc} from "./proc";
 import {transaction} from "./transaction";
 const d = debug("pipeproc:node");
 
 export function disableProc(
-    db: LevelDOWN.LevelDown,
+    db: LevelDOWN,
     activeProcs: IProc[],
     procName: string,
     callback: (err?: Error|null, proc?: IProc) => void
@@ -35,7 +35,7 @@ export function disableProc(
 }
 
 export function resumeProc(
-    db: LevelDOWN.LevelDown,
+    db: LevelDOWN,
     activeProcs: IProc[],
     procName: string,
     callback: (err?: Error|null, proc?: IProc) => void

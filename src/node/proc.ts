@@ -1,5 +1,5 @@
 import debug from "debug";
-import LevelDOWN from "leveldown";
+import {LevelDown as LevelDOWN} from "leveldown";
 import {transaction} from "./transaction";
 import {IActiveTopics} from "./pipeProc";
 import {getRange, IRangeResult} from "./getRange";
@@ -26,7 +26,7 @@ export interface IProc {
 }
 
 export function proc(
-    db: LevelDOWN.LevelDown,
+    db: LevelDOWN,
     activeProcs: IProc[],
     activeTopics: IActiveTopics,
     options: {
@@ -74,7 +74,7 @@ export function proc(
 }
 
 export function getAvailableProc(
-    db: LevelDOWN.LevelDown,
+    db: LevelDOWN,
     activeProcs: IProc[],
     activeTopics: IActiveTopics,
     procList: {
@@ -183,7 +183,7 @@ function topicHasNewLogs(activeTopics: IActiveTopics, myProc: IProc) {
 }
 
 function getProc(
-    db: LevelDOWN.LevelDown,
+    db: LevelDOWN,
     activeProcs: IProc[],
     options: {
         name: string,
@@ -216,7 +216,7 @@ function getProc(
 }
 
 export function createProc(
-    db: LevelDOWN.LevelDown,
+    db: LevelDOWN,
     options: {
         name: string,
         topic: string,
@@ -303,7 +303,7 @@ export function createProc(
 }
 
 function getIteratorResult(
-    db: LevelDOWN.LevelDown,
+    db: LevelDOWN,
     myProc: IProc,
     activeTopics: IActiveTopics,
     count: number,
@@ -362,7 +362,7 @@ function getIteratorResult(
 }
 
 function updateProc(
-    db: LevelDOWN.LevelDown,
+    db: LevelDOWN,
     myProc: IProc,
     result: IRangeResult | IRangeResult[]
 ) {
@@ -408,7 +408,7 @@ function updateProc(
 }
 
 function checkClaimTimeout(
-    db: LevelDOWN.LevelDown,
+    db: LevelDOWN,
     activeProcs: IProc[],
     myProc: IProc,
     callback: (err?: Error | null) => void

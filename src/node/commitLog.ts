@@ -1,12 +1,12 @@
 import debug from "debug";
-import LevelDOWN from "leveldown";
+import {LevelDown as LevelDOWN} from "leveldown";
 import {IActiveTopics} from "./pipeProc";
 import {transaction} from "./transaction";
 
 const d = debug("pipeproc:node");
 
 export function commitLog(
-    db: LevelDOWN.LevelDown,
+    db: LevelDOWN,
     activeTopics: IActiveTopics,
     log: {topic: string; body: string} | {topic: string; body: string}[],
     callback: (err?: Error|null, id?: string | string[]) => void
@@ -35,7 +35,7 @@ export function commitLog(
 }
 
 export function preCommit(
-    db: LevelDOWN.LevelDown,
+    db: LevelDOWN,
     activeTopics: IActiveTopics,
     log: {topic: string; body: string},
     creationTime: number

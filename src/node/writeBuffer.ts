@@ -9,7 +9,7 @@ export function startWriteBuffer(buffer: IWriteBuffer): WriteBufferStopper {
     let stop = false;
     let stopped = false;
     forever(function(next) {
-        if (stop) return next("stop");
+        if (stop) return next(new Error("stop"));
         if (buffer.length > 0) {
             d("buffer size:", buffer.length);
             const listenerWrapper = buffer.shift();
