@@ -68,7 +68,7 @@ let clientTLS: {
 
 export interface IActiveTopics {
     [key: string]: {
-        currentTone: number,
+        currentTone: string,
         createdAt: number
     };
 }

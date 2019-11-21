@@ -41,7 +41,7 @@ export function restoreState(
                     const topic = key.toString().split("~~system~~#activeTopics#")[1];
                     if (key.indexOf("~~system~~#activeTopics#") > -1 && topic) {
                         activeTopics[topic] = {
-                            currentTone: -1,
+                            currentTone: "0000000000000000",
                             createdAt: parseInt(value.toString())
                         };
                     }
@@ -76,7 +76,7 @@ export function restoreState(
                     if (!key) return next(new Error("stop"));
                     const topic = key.toString().split("~~system~~#currentTone#")[1];
                     if (key.indexOf("~~system~~#currentTone#") > -1 && topic) {
-                        activeTopics[topic].currentTone = parseInt(value.toString());
+                        activeTopics[topic].currentTone = value.toString();
                     }
                     next();
                 });

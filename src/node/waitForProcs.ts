@@ -18,7 +18,7 @@ export function waitForProcs(
                 filter(p => p.status === "active" && activeTopics[p.topic]);
         }
         every(procsToCheck, function(proc, nextProc) {
-            const currentTone = activeTopics[proc.topic].currentTone;
+            const currentTone = parseInt(activeTopics[proc.topic].currentTone);
             let procTone: number;
             if (proc.lastAckedRange.split("..")[1]) {
                 procTone = parseInt(proc.lastAckedRange.split("..")[1].split("-")[1]);

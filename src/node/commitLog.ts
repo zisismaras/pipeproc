@@ -44,16 +44,17 @@ export function preCommit(
     if (!activeTopics[log.topic]) {
         activeTopics[log.topic] = {
             createdAt: creationTime,
-            currentTone: -1
+            currentTone: "0000000000000000"
         };
         tx.add([
             {key: `~~system~~#activeTopics#${log.topic}`, value: `${creationTime}`},
             {key: `~~system~~#currentTone#${log.topic}`, value: "-1"}
         ]);
     }
-    const id = `${creationTime}-${activeTopics[log.topic].currentTone + 1}`;
+    const nextTone = incrementCurrentTone(activeTopics[log.topic].currentTone);
+    const id = `${creationTime}-${nextTone}`;
     const key = `topic#${log.topic}#key#${id}`;
-    const idKey = `~~internal~~#topic#${log.topic}#idKey#${activeTopics[log.topic].currentTone + 1}`;
+    const idKey = `~~internal~~#topic#${log.topic}#idKey#${nextTone}`;
 
     tx.add([{
         key: key,
@@ -63,13 +64,20 @@ export function preCommit(
         value: key
     }, {
         key: `~~system~~#currentTone#${log.topic}`,
-        value: `${activeTopics[log.topic].currentTone + 1}`
+        value: nextTone
     }]);
-    activeTopics[log.topic].currentTone += 1;
+    activeTopics[log.topic].currentTone = nextTone;
 
     tx.done(function() {
         return id;
     }, "commits");
 
     return tx;
+}
+
+function incrementCurrentTone(currentTone: string): string {
+    const parsed = String(parseInt(currentTone) + 1);
+    const zerosToFill = 16 - parsed.length;
+
+    return (new Array(zerosToFill)).fill("0").join("") + parsed;
 }
