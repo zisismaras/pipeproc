@@ -56,7 +56,9 @@ export function getRange(
         function(cb) {
             if (start.match(/:[0-9]+/)) {
                 sdo.isStartIdSearch = true;
-                const idKey = `~~internal~~#topic#${topic}#idKey#${start.replace(":", "")}`;
+                let parsed = start.replace(":", "");
+                parsed = (new Array(16 - parsed.length)).fill("0").join("") + parsed;
+                const idKey = `~~internal~~#topic#${topic}#idKey#${parsed}`;
                 d("doing id search for start, idKey:", idKey);
                 db.get(idKey, {asBuffer: false}, function(err, value) {
                     if (err && err.message.indexOf("NotFound") > -1) {
@@ -76,7 +78,9 @@ export function getRange(
         function(cb) {
             if (end.match(/:[0-9]+/)) {
                 sdo.isEndIdSearch = true;
-                const idKey = `~~internal~~#topic#${topic}#idKey#${end.replace(":", "")}`;
+                let parsed = end.replace(":", "");
+                parsed = (new Array(16 - parsed.length)).fill("0").join("") + parsed;
+                const idKey = `~~internal~~#topic#${topic}#idKey#${parsed}`;
                 d("doing id search for end, idKey:", idKey);
                 db.get(idKey, {asBuffer: false}, function(err, value) {
                     if (err && err.message.indexOf("NotFound") > -1) {

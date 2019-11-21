@@ -97,7 +97,7 @@ describe("add a single log", function() {
                         done.fail(ackErr);
                     } else {
                         expect(status[0]).toBe(`${addedIds[0]}..${addedIds[0]}`);
-                        expect(status[1]).toEndWith("-0");
+                        expect(status[1]).toEndWith("01");
                         done();
                     }
                 });
@@ -211,9 +211,9 @@ describe("add multiple logs", function() {
                     } else {
                         expect(status[0]).toBe(`${addedIds[0]}..${addedIds[0]}`);
                         expect(status[1]).toBeArray();
-                        expect(status[1][0]).toEndWith("-0");
-                        expect(status[1][1]).toEndWith("-1");
-                        expect(status[1][2]).toEndWith("-0");
+                        expect(status[1][0]).toEndWith("01");
+                        expect(status[1][1]).toEndWith("02");
+                        expect(status[1][2]).toEndWith("01");
                         done();
                     }
                 });
