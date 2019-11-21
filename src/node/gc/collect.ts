@@ -5,6 +5,7 @@ import {IActiveTopics} from "../pipeProc";
 import {IProc} from "../proc";
 import {getRange} from "../getRange";
 import {transaction} from "../transaction";
+import {decrementCurrentTone} from "../commitLog";
 
 export function collect(
     db: LevelDOWN,
@@ -37,28 +38,31 @@ export function collect(
 
     const toCollect: {
         topic: string,
-        toneId: number,
+        toneId: string,
         ts: number
     }[] = [];
+
+    const ZERO_TONE = "0000000000000000";
+    const FIRST_TONE = "0000000000000001";
 
     //for topicsWithProcs find the smallest possible id processed by all of its procs
     Object.keys(topicsWithProcs).forEach(function(topicName) {
         const minProc = activeProcs
             .filter(p => p.topic === topicName && p.status === "active")
             .map(p => {
-                if (!p.previousClaimedRange) return {name: p.name, toneId: -1, ts: 0};
-                const toneId = parseInt(p.previousClaimedRange.split("..")[0].split("-")[1]);
+                if (!p.previousClaimedRange) return {name: p.name, toneId: ZERO_TONE, ts: 0};
+                const toneId = p.previousClaimedRange.split("..")[0].split("-")[1];
                 const ts = parseInt(p.previousClaimedRange.split("..")[0].split("-")[0]);
-                if (toneId === 0) return {name: p.name, toneId: -1, ts: 0};
+                if (toneId === FIRST_TONE) return {name: p.name, toneId: ZERO_TONE, ts: 0};
                 return {
                     name: p.name,
-                    toneId: toneId - 1,
+                    toneId: decrementCurrentTone(toneId),
                     ts: ts
                 };
             })
-            .filter(p => p.toneId > -1)
-            .reduce((p, v) => (p.toneId < v.toneId && p.toneId > -1 ? p : v), {toneId: -1, ts: 0});
-        if (minProc.toneId > -1 && minProc.ts <= currentTS - MIN_PRUNE_TIME) {
+            .filter(p => p.toneId > ZERO_TONE)
+            .reduce((p, v) => (p.toneId < v.toneId && p.toneId > ZERO_TONE ? p : v), {toneId: ZERO_TONE, ts: 0});
+        if (minProc.toneId > ZERO_TONE && minProc.ts <= currentTS - MIN_PRUNE_TIME) {
             toCollect.push({
                 topic: topicName,
                 toneId: minProc.toneId,
@@ -85,7 +89,7 @@ export function collect(
                         if (logs && logs.length > 0) {
                             toCollect.push({
                                 topic: topicName,
-                                toneId: parseInt(logs[0].id.split("-")[1]),
+                                toneId: logs[0].id.split("-")[1],
                                 ts: parseInt(logs[0].id.split("-")[0])
                             });
                         }

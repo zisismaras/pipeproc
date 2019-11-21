@@ -75,8 +75,19 @@ export function preCommit(
     return tx;
 }
 
-function incrementCurrentTone(currentTone: string): string {
+export function incrementCurrentTone(currentTone: string): string {
     const parsed = String(parseInt(currentTone) + 1);
+    const zerosToFill = 16 - parsed.length;
+
+    return (new Array(zerosToFill)).fill("0").join("") + parsed;
+}
+
+export function decrementCurrentTone(currentTone: string): string {
+    const tone = parseInt(currentTone) - 1;
+    if (tone <= 0) {
+        return (new Array(16)).fill("0").join("");
+    }
+    const parsed = String(tone);
     const zerosToFill = 16 - parsed.length;
 
     return (new Array(zerosToFill)).fill("0").join("") + parsed;
