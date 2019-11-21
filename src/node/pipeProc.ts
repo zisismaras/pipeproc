@@ -37,7 +37,7 @@ import {
     prepareMessage,
     IPipeProcAvailableProcMessageReply
 } from "../common/messages";
-import {commitLog} from "./commitLog";
+import {commitLog, incrementCurrentTone} from "./commitLog";
 import {restoreState} from "./restoreState";
 import {runShutdownHooks} from "./shutdown";
 import {getRange} from "./getRange";
@@ -220,8 +220,12 @@ registerMessage<IPipeProcLogMessage["data"], IPipeProcLogMessageReply["data"]>(m
             if (err) {
                 callback((err && err.message) || "uknown_error");
             } else {
-                if (id) {
-                    callback(null, {id: id});
+                if (id && Array.isArray(id)) {
+                    callback(null, {
+                        id: id.map(convertToClientId)
+                    });
+                } else if (id) {
+                        callback(null, {id: convertToClientId(id)});
                 } else {
                     callback("uncommited");
                 }
@@ -243,8 +247,8 @@ registerMessage<IPipeProcRangeMessage["data"], IPipeProcRangeMessageReply["data"
             db,
             activeTopics,
             data.topic,
-            data.options.start,
-            data.options.end,
+            convertRangeParams(data.options.start),
+            convertRangeParams(data.options.end),
             data.options.limit,
             data.options.exclusive,
             data.options.reverse,
@@ -253,7 +257,15 @@ registerMessage<IPipeProcRangeMessage["data"], IPipeProcRangeMessageReply["data"
                 callback((err && err.message) || "uknown_error");
             } else {
                 if (results) {
-                    callback(null, {results});
+                    callback(null, {
+                        results: results.map(function(re) {
+                            return {
+                                id: convertToClientId(re.id),
+                                data: re.data
+
+                            };
+                        })
+                    });
                 } else {
                     callback();
                 }
@@ -276,7 +288,19 @@ registerMessage<IPipeProcProcMessage["data"], IPipeProcProcMessageReply["data"]>
                 callback((err && err.message) || "uknown_error");
             } else {
                 if (log) {
-                    callback(null, log);
+                    if (Array.isArray(log)) {
+                        callback(null, log.map(function(l) {
+                            return {
+                                id: convertToClientId(l.id),
+                                data: l.data
+                            };
+                        }));
+                    } else {
+                        callback(null, {
+                            id: convertToClientId(log.id),
+                            data: log.data
+                        });
+                    }
                 } else {
                     callback();
                 }
@@ -299,7 +323,26 @@ registerMessage<IPipeProcAvailableProcMessage["data"], IPipeProcAvailableProcMes
                 callback((err && err.message) || "uknown_error");
             } else {
                 if (result) {
-                    callback(null, result);
+                    let log;
+                    if (result.log) {
+                        if (Array.isArray(result.log)) {
+                            log = result.log.map(function(l) {
+                                return {
+                                    id: convertToClientId(l.id),
+                                    data: l.data
+                                };
+                            });
+                        } else {
+                            log = {
+                                id: convertToClientId(result.log.id),
+                                data: result.log.data
+                            };
+                        }
+                    }
+                    callback(null, {
+                        procName: result.procName,
+                        log: log
+                    });
                 } else {
                     callback();
                 }
@@ -341,7 +384,7 @@ registerMessage<IPipeProcAckMessage["data"], IPipeProcAckMessageReply["data"]>(m
                 callback((err && err.message) || "uknown_error");
             } else {
                 if (ackedLogId) {
-                    callback(null, {id: ackedLogId});
+                    callback(null, {id: convertToClientId(ackedLogId)});
                 } else {
                     callback("invalid_ack");
                 }
@@ -363,9 +406,15 @@ registerMessage<IPipeProcAckLogMessage["data"], IPipeProcAckLogMessageReply["dat
             if (err) {
                 callback((err && err.message) || "uknown_error");
             } else {
-                const ackedLogId = status[0];
-                const commitedId = status[1];
+                let ackedLogId = status[0];
+                let commitedId = status[1];
                 if (status && ackedLogId && commitedId) {
+                    ackedLogId = convertToClientId(ackedLogId);
+                    if (Array.isArray(commitedId)) {
+                        commitedId = commitedId.map(convertToClientId);
+                    } else {
+                        commitedId = convertToClientId(commitedId);
+                    }
                     callback(null, {ackedLogId: ackedLogId, id: commitedId});
                 } else {
                     callback("invalid_ack_or_commit");
@@ -543,3 +592,28 @@ const shutdownListener = function(e: IPipeProcMessage) {
 process.on("message", initIPCListener);
 process.on("message", shutdownListener);
 stopWriteBuffer = startWriteBuffer(writeBuffer);
+
+function convertToClientId(nodeId: string): string {
+    return nodeId.split("..").map(function(id) {
+        const idParts = id.split("-");
+        const parsedId = parseInt(idParts[1]);
+        if (parsedId <= 0) {
+            return `${idParts[0]}-0`;
+        } else {
+            return `${idParts[0]}-${parsedId - 1}`;
+        }
+    }).join("..");
+}
+
+function convertRangeParams(param: string): string {
+    if (!param) return param;
+    if (param.includes(":")) {
+        const parsed = parseInt(param.replace(":", ""));
+        return `:${parsed + 1}`;
+    } else if (param.includes("-")) {
+        const parts = param.split("-");
+        return `${parts[0]}-${incrementCurrentTone(parts[1])}`;
+    } else {
+        return param;
+    }
+}
