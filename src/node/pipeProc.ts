@@ -433,9 +433,13 @@ registerMessage<IPipeProcInspectProcMessage["data"], IPipeProcInspectProcMessage
         data,
         callback
     ) {
-        const myProc = activeProcs.find(p => p.name === data.procName);
+        const theProc = activeProcs.find(p => p.name === data.procName);
         d("proc inspection request:", data.procName);
-        if (myProc) {
+        if (theProc) {
+            const myProc = JSON.parse(JSON.stringify(theProc));
+            myProc.lastAckedRange = convertToClientId(myProc.lastAckedRange);
+            myProc.lastClaimedRange = convertToClientId(myProc.lastClaimedRange);
+            myProc.previousClaimedRange = convertToClientId(myProc.previousClaimedRange);
             callback(null, {proc: myProc});
         } else {
             callback("invalid_proc");
@@ -452,11 +456,15 @@ registerMessage<IPipeProcDestroyProcMessage["data"], IPipeProcDestroyProcMessage
         data,
         callback
     ) {
-        destroyProc(db, activeProcs, data.procName, function(err, myProc) {
+        destroyProc(db, activeProcs, data.procName, function(err, theProc) {
             if (err) {
                 callback((err && err.message) || "uknown_error");
             } else {
-                if (myProc) {
+                if (theProc) {
+                    const myProc = JSON.parse(JSON.stringify(theProc));
+                    myProc.lastAckedRange = convertToClientId(myProc.lastAckedRange);
+                    myProc.lastClaimedRange = convertToClientId(myProc.lastClaimedRange);
+                    myProc.previousClaimedRange = convertToClientId(myProc.previousClaimedRange);
                     callback(null, {proc: myProc});
                 } else {
                     callback("invalid_proc");
@@ -475,11 +483,15 @@ registerMessage<IPipeProcDisableProcMessage["data"], IPipeProcDisableProcMessage
         data,
         callback
     ) {
-        disableProc(db, activeProcs, data.procName, function(err, myProc) {
+        disableProc(db, activeProcs, data.procName, function(err, theProc) {
             if (err) {
                 callback((err && err.message) || "uknown_error");
             } else {
-                if (myProc) {
+                if (theProc) {
+                    const myProc = JSON.parse(JSON.stringify(theProc));
+                    myProc.lastAckedRange = convertToClientId(myProc.lastAckedRange);
+                    myProc.lastClaimedRange = convertToClientId(myProc.lastClaimedRange);
+                    myProc.previousClaimedRange = convertToClientId(myProc.previousClaimedRange);
                     callback(null, {proc: myProc});
                 } else {
                     callback("invalid_proc");
@@ -498,11 +510,15 @@ registerMessage<IPipeProcResumeProcMessage["data"], IPipeProcResumeProcMessageRe
         data,
         callback
     ) {
-        resumeProc(db, activeProcs, data.procName, function(err, myProc) {
+        resumeProc(db, activeProcs, data.procName, function(err, theProc) {
             if (err) {
                 callback((err && err.message) || "uknown_error");
             } else {
-                if (myProc) {
+                if (theProc) {
+                    const myProc = JSON.parse(JSON.stringify(theProc));
+                    myProc.lastAckedRange = convertToClientId(myProc.lastAckedRange);
+                    myProc.lastClaimedRange = convertToClientId(myProc.lastClaimedRange);
+                    myProc.previousClaimedRange = convertToClientId(myProc.previousClaimedRange);
                     callback(null, {proc: myProc});
                 } else {
                     callback("invalid_proc");
@@ -594,6 +610,7 @@ process.on("message", shutdownListener);
 stopWriteBuffer = startWriteBuffer(writeBuffer);
 
 function convertToClientId(nodeId: string): string {
+    if (!nodeId) return nodeId;
     return nodeId.split("..").map(function(id) {
         const idParts = id.split("-");
         const parsedId = parseInt(idParts[1]);
