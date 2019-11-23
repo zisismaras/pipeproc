@@ -53,7 +53,7 @@ describe("systemProc smoke test", function() {
     });
 
     test("multiple log pipeline", async function(done) {
-        expect.assertions(30);
+        expect.assertions(31);
         await client.systemProc({
             name: "my_system_proc",
             from: "topic_1",
@@ -81,11 +81,13 @@ describe("systemProc smoke test", function() {
         let total = 0;
         lp.changes(async function(_err, result) {
             //@ts-ignore
-            expect(result.body.number).toBe(1);
-            //@ts-ignore
             total += result.body.number;
+            //@ts-ignore
+            expect(result.id).toEndWith(`-${total - 1}`);
             await this.ack();
             if (total === 30) {
+                //@ts-ignore
+                expect(result.id).toEndWith("-29");
                 await lp.cancel();
                 done();
             }

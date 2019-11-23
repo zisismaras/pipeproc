@@ -360,11 +360,29 @@ registerMessage<IPipeProcSystemProcMessage["data"], IPipeProcSystemProcMessageRe
         data,
         callback
     ) {
-        systemProc(db, activeProcs, activeSystemProcs, activeWorkers, data.options, function(err, myProc) {
+        systemProc(db, activeProcs, activeSystemProcs, activeWorkers, data.options, function(err, theProc) {
             if (err) {
                 callback((err && err.message) || "uknown_error");
             } else {
-                callback(null, {proc: myProc});
+                if (Array.isArray(theProc)) {
+                    callback(null, {
+                        proc: theProc.map(function(p) {
+                            const myProc = JSON.parse(JSON.stringify(p));
+                            myProc.lastAckedRange = convertToClientId(myProc.lastAckedRange);
+                            myProc.lastClaimedRange = convertToClientId(myProc.lastClaimedRange);
+                            myProc.previousClaimedRange = convertToClientId(myProc.previousClaimedRange);
+                            return myProc;
+                        })
+                    });
+                } else if (theProc) {
+                    const myProc = JSON.parse(JSON.stringify(theProc));
+                    myProc.lastAckedRange = convertToClientId(myProc.lastAckedRange);
+                    myProc.lastClaimedRange = convertToClientId(myProc.lastClaimedRange);
+                    myProc.previousClaimedRange = convertToClientId(myProc.previousClaimedRange);
+                    callback(null, {proc: myProc});
+                } else {
+                    callback();
+                }
             }
         });
     }
@@ -541,7 +559,9 @@ registerMessage<IPipeProcReclaimProcMessage["data"], IPipeProcReclaimProcMessage
             if (err) {
                 callback((err && err.message) || "uknown_error");
             } else {
-                callback(null, {lastClaimedRange: lastClaimedRange || ""});
+                callback(null, {
+                    lastClaimedRange: lastClaimedRange ? convertToClientId(lastClaimedRange) : ""
+                });
             }
         });
     }

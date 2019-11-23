@@ -98,6 +98,9 @@ describe("proc tests", function() {
         expect(log).toBeDefined();
         if (!Array.isArray(log)) {
             expect(log.id).toBe(testLogIds[1]);
+            const myProc = await client.inspectProc("my_proc_0");
+            expect(myProc.lastAckedRange).toBe(`${testLogIds[0]}..${testLogIds[0]}`);
+            expect(myProc.lastClaimedRange).toBe(`${testLogIds[1]}..${testLogIds[1]}`);
         } else {
             throw new Error("invalid_proc_result");
         }
@@ -142,7 +145,8 @@ describe("proc tests", function() {
             reclaimTimeout: 10000,
             onMaxReclaimsReached: "disable"
         });
-        await client.reclaimProc("my_proc_0");
+        const reclaimId = await client.reclaimProc("my_proc_0");
+        expect(reclaimId).toBe("");
         const log = await client.proc("my_topic_0", {
             name: "my_proc_0",
             offset: ">",
@@ -157,6 +161,28 @@ describe("proc tests", function() {
         } else {
             throw new Error("invalid_proc_result");
         }
+    });
+
+    it("should return a correct reclaimId", async function() {
+        await client.proc("my_topic_0", {
+            name: "my_proc_0",
+            offset: ">",
+            count: 1,
+            maxReclaims: 10,
+            reclaimTimeout: 10000,
+            onMaxReclaimsReached: "disable"
+        });
+        await client.ack("my_proc_0");
+        await client.proc("my_topic_0", {
+            name: "my_proc_0",
+            offset: ">",
+            count: 1,
+            maxReclaims: 10,
+            reclaimTimeout: 10000,
+            onMaxReclaimsReached: "disable"
+        });
+        const reclaimId = await client.reclaimProc("my_proc_0");
+        expect(reclaimId).toBe(`${testLogIds[0]}..${testLogIds[0]}`);
     });
 
     it("should be able to inspect a proc", async function() {
