@@ -72,7 +72,8 @@
         "match-default-export-name": false,
         "cyclomatic-complexity": false,
         "max-line-length": false,
-        "no-non-null-assertion": false
+        "no-non-null-assertion": false,
+        "prefer-array-literal": false
     },
     "jsRules": {
         "max-line-length": {

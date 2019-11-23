@@ -6,6 +6,7 @@ import MemDOWN from "memdown";
 import {parallel} from "async";
 import {commitLog} from "../../src/node/commitLog";
 import {IActiveTopics} from "../../src/node/pipeProc";
+import {FIRST_TONE, SECOND_TONE} from "../../src/node/tones";
 
 const LOG_ID_FORMAT = /^([0-9]{13}-[0-9]+)$/;
 
@@ -22,7 +23,7 @@ describe("add a single log", function() {
             done();
         });
     });
-    test("the first log should have a tone number of 0", function(done) {
+    test("the first log should have a tone number of 1(zero-padded)", function(done) {
         const db: LevelDOWN = MemDOWN();
         const activeTopics: IActiveTopics = {};
         commitLog(db, activeTopics, {
@@ -30,11 +31,11 @@ describe("add a single log", function() {
             body: "{\"myData\": 1}"
         }, function(err, id) {
             if (err) return done.fail(err);
-            expect(id).toEndWith("-0");
+            expect((<string>id).split("-")[1]).toBe(FIRST_TONE);
             done();
         });
     });
-    test("the second log should have a tone number of 1", function(done) {
+    test("the second log should have a tone number of 2(zero-padded)", function(done) {
         const db: LevelDOWN = MemDOWN();
         const activeTopics: IActiveTopics = {};
         commitLog(db, activeTopics, {
@@ -46,7 +47,7 @@ describe("add a single log", function() {
                 body: "{\"myData\": 2}"
             }, function(err, id) {
                 if (err) return done.fail(err);
-                expect(id).toEndWith("-1");
+                expect((<string>id).split("-")[1]).toBe(SECOND_TONE);
                 done();
             });
         });
@@ -152,7 +153,7 @@ describe("add multiple logs to the same topic", function() {
             if (err) return done.fail(err);
             if (ids && Array.isArray(ids)) {
                 ids.forEach(function(id, i) {
-                    expect(id).toEndWith(`-${i}`);
+                    expect(id).toEndWith(`${i + 1}`);
                 });
                 done();
             } else {
@@ -250,10 +251,10 @@ describe("add multiple logs to the same topic", function() {
         ], function(err: Error, ids) {
             if (err) return done.fail(err);
             if (ids && Array.isArray(ids)) {
-                expect(ids[0]).toEndWith("-0");
-                expect(ids[1]).toEndWith("-1");
-                expect(ids[2]).toEndWith("-2");
-                expect(ids[3]).toEndWith("-3");
+                expect(ids[0]).toEndWith("01");
+                expect(ids[1]).toEndWith("02");
+                expect(ids[2]).toEndWith("03");
+                expect(ids[3]).toEndWith("04");
                 done();
             } else {
                 done.fail("ids was not an array");
@@ -306,7 +307,7 @@ describe("add multiple logs to different topics", function() {
             }
         });
     });
-    test("the logs should start with a tone number of 0", function(done) {
+    test("the logs should start with a tone number of 1(zero-padded)", function(done) {
         const db: LevelDOWN = MemDOWN();
         const activeTopics: IActiveTopics = {};
         commitLog(db, activeTopics, [{
@@ -322,7 +323,7 @@ describe("add multiple logs to different topics", function() {
             if (err) return done.fail(err);
             if (ids && Array.isArray(ids)) {
                 ids.forEach(function(id) {
-                    expect(id).toEndWith("-0");
+                    expect(id).toEndWith("01");
                 });
                 done();
             } else {
@@ -354,12 +355,12 @@ describe("add multiple logs to different topics", function() {
         }], function(err, ids) {
             if (err) return done.fail(err);
             if (ids && Array.isArray(ids)) {
-                expect(ids[0]).toEndWith("-0");
-                expect(ids[1]).toEndWith("-0");
-                expect(ids[2]).toEndWith("-1");
-                expect(ids[3]).toEndWith("-1");
-                expect(ids[4]).toEndWith("-2");
-                expect(ids[5]).toEndWith("-2");
+                expect(ids[0]).toEndWith("01");
+                expect(ids[1]).toEndWith("01");
+                expect(ids[2]).toEndWith("02");
+                expect(ids[3]).toEndWith("02");
+                expect(ids[4]).toEndWith("03");
+                expect(ids[5]).toEndWith("03");
                 done();
             } else {
                 done.fail("ids was not an array");
@@ -456,10 +457,10 @@ describe("add multiple logs to different topics", function() {
         ], function(err: {message: string}, ids) {
             if (err) return done.fail(err);
             if (ids && Array.isArray(ids)) {
-                expect(ids[0]).toEndWith("-0");
-                expect(ids[1]).toEndWith("-0");
-                expect(ids[2]).toEndWith("-1");
-                expect(ids[3]).toEndWith("-1");
+                expect(ids[0]).toEndWith("01");
+                expect(ids[1]).toEndWith("01");
+                expect(ids[2]).toEndWith("02");
+                expect(ids[3]).toEndWith("02");
                 done();
             } else {
                 done.fail("ids was not an array");

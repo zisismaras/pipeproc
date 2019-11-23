@@ -6,6 +6,8 @@ import {v4 as uuid} from "uuid";
 
 let client: IPipeProcClient;
 
+jest.setTimeout(60000);
+
 beforeEach(async function() {
     client = PipeProc();
 
@@ -47,6 +49,48 @@ describe("systemProc smoke test", function() {
             expect(result.body.updatedNumber).toBe(2);
             await lp.cancel();
             done();
+        });
+    });
+
+    test("multiple log pipeline", async function(done) {
+        expect.assertions(31);
+        await client.systemProc({
+            name: "my_system_proc",
+            from: "topic_1",
+            to: "topic_2",
+            offset: ">",
+            count: 1,
+            maxReclaims: 10,
+            reclaimTimeout: 10000,
+            onMaxReclaimsReached: "disable",
+            processor: function(log, processorDone) {
+                //@ts-ignore
+                processorDone(null, {number: log.body.number});
+            }
+        });
+        await client.commit((new Array(30).fill({
+            topic: "topic_1",
+            body: {
+                number: 1
+            }
+        })));
+        const lp = client.liveProc({
+            topic: "topic_2",
+            mode: "all"
+        });
+        let total = 0;
+        lp.changes(async function(_err, result) {
+            //@ts-ignore
+            total += result.body.number;
+            //@ts-ignore
+            expect(result.id).toEndWith(`-${total - 1}`);
+            await this.ack();
+            if (total === 30) {
+                //@ts-ignore
+                expect(result.id).toEndWith("-29");
+                await lp.cancel();
+                done();
+            }
         });
     });
 });

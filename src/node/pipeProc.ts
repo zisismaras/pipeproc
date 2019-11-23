@@ -54,6 +54,7 @@ import {reclaimProc} from "./reclaimProc";
 import {collect} from "./gc/collect";
 import {waitForProcs} from "./waitForProcs";
 import {ServerSocket} from "../socket/bind";
+import {convertToClientId, convertRangeParams} from "./tones";
 
 const d = debug("pipeproc:node");
 
@@ -68,7 +69,7 @@ let clientTLS: {
 
 export interface IActiveTopics {
     [key: string]: {
-        currentTone: number,
+        currentTone: string,
         createdAt: number
     };
 }
@@ -220,8 +221,12 @@ registerMessage<IPipeProcLogMessage["data"], IPipeProcLogMessageReply["data"]>(m
             if (err) {
                 callback((err && err.message) || "uknown_error");
             } else {
-                if (id) {
-                    callback(null, {id: id});
+                if (id && Array.isArray(id)) {
+                    callback(null, {
+                        id: id.map(convertToClientId)
+                    });
+                } else if (id) {
+                        callback(null, {id: convertToClientId(id)});
                 } else {
                     callback("uncommited");
                 }
@@ -243,8 +248,8 @@ registerMessage<IPipeProcRangeMessage["data"], IPipeProcRangeMessageReply["data"
             db,
             activeTopics,
             data.topic,
-            data.options.start,
-            data.options.end,
+            convertRangeParams(data.options.start),
+            convertRangeParams(data.options.end),
             data.options.limit,
             data.options.exclusive,
             data.options.reverse,
@@ -253,7 +258,15 @@ registerMessage<IPipeProcRangeMessage["data"], IPipeProcRangeMessageReply["data"
                 callback((err && err.message) || "uknown_error");
             } else {
                 if (results) {
-                    callback(null, {results});
+                    callback(null, {
+                        results: results.map(function(re) {
+                            return {
+                                id: convertToClientId(re.id),
+                                data: re.data
+
+                            };
+                        })
+                    });
                 } else {
                     callback();
                 }
@@ -276,7 +289,19 @@ registerMessage<IPipeProcProcMessage["data"], IPipeProcProcMessageReply["data"]>
                 callback((err && err.message) || "uknown_error");
             } else {
                 if (log) {
-                    callback(null, log);
+                    if (Array.isArray(log)) {
+                        callback(null, log.map(function(l) {
+                            return {
+                                id: convertToClientId(l.id),
+                                data: l.data
+                            };
+                        }));
+                    } else {
+                        callback(null, {
+                            id: convertToClientId(log.id),
+                            data: log.data
+                        });
+                    }
                 } else {
                     callback();
                 }
@@ -299,7 +324,26 @@ registerMessage<IPipeProcAvailableProcMessage["data"], IPipeProcAvailableProcMes
                 callback((err && err.message) || "uknown_error");
             } else {
                 if (result) {
-                    callback(null, result);
+                    let log;
+                    if (result.log) {
+                        if (Array.isArray(result.log)) {
+                            log = result.log.map(function(l) {
+                                return {
+                                    id: convertToClientId(l.id),
+                                    data: l.data
+                                };
+                            });
+                        } else {
+                            log = {
+                                id: convertToClientId(result.log.id),
+                                data: result.log.data
+                            };
+                        }
+                    }
+                    callback(null, {
+                        procName: result.procName,
+                        log: log
+                    });
                 } else {
                     callback();
                 }
@@ -317,11 +361,29 @@ registerMessage<IPipeProcSystemProcMessage["data"], IPipeProcSystemProcMessageRe
         data,
         callback
     ) {
-        systemProc(db, activeProcs, activeSystemProcs, activeWorkers, data.options, function(err, myProc) {
+        systemProc(db, activeProcs, activeSystemProcs, activeWorkers, data.options, function(err, theProc) {
             if (err) {
                 callback((err && err.message) || "uknown_error");
             } else {
-                callback(null, {proc: myProc});
+                if (Array.isArray(theProc)) {
+                    callback(null, {
+                        proc: theProc.map(function(p) {
+                            const myProc = JSON.parse(JSON.stringify(p));
+                            myProc.lastAckedRange = convertToClientId(myProc.lastAckedRange);
+                            myProc.lastClaimedRange = convertToClientId(myProc.lastClaimedRange);
+                            myProc.previousClaimedRange = convertToClientId(myProc.previousClaimedRange);
+                            return myProc;
+                        })
+                    });
+                } else if (theProc) {
+                    const myProc = JSON.parse(JSON.stringify(theProc));
+                    myProc.lastAckedRange = convertToClientId(myProc.lastAckedRange);
+                    myProc.lastClaimedRange = convertToClientId(myProc.lastClaimedRange);
+                    myProc.previousClaimedRange = convertToClientId(myProc.previousClaimedRange);
+                    callback(null, {proc: myProc});
+                } else {
+                    callback();
+                }
             }
         });
     }
@@ -341,7 +403,7 @@ registerMessage<IPipeProcAckMessage["data"], IPipeProcAckMessageReply["data"]>(m
                 callback((err && err.message) || "uknown_error");
             } else {
                 if (ackedLogId) {
-                    callback(null, {id: ackedLogId});
+                    callback(null, {id: convertToClientId(ackedLogId)});
                 } else {
                     callback("invalid_ack");
                 }
@@ -363,9 +425,15 @@ registerMessage<IPipeProcAckLogMessage["data"], IPipeProcAckLogMessageReply["dat
             if (err) {
                 callback((err && err.message) || "uknown_error");
             } else {
-                const ackedLogId = status[0];
-                const commitedId = status[1];
+                let ackedLogId = status[0];
+                let commitedId = status[1];
                 if (status && ackedLogId && commitedId) {
+                    ackedLogId = convertToClientId(ackedLogId);
+                    if (Array.isArray(commitedId)) {
+                        commitedId = commitedId.map(convertToClientId);
+                    } else {
+                        commitedId = convertToClientId(commitedId);
+                    }
                     callback(null, {ackedLogId: ackedLogId, id: commitedId});
                 } else {
                     callback("invalid_ack_or_commit");
@@ -384,9 +452,13 @@ registerMessage<IPipeProcInspectProcMessage["data"], IPipeProcInspectProcMessage
         data,
         callback
     ) {
-        const myProc = activeProcs.find(p => p.name === data.procName);
+        const theProc = activeProcs.find(p => p.name === data.procName);
         d("proc inspection request:", data.procName);
-        if (myProc) {
+        if (theProc) {
+            const myProc = JSON.parse(JSON.stringify(theProc));
+            myProc.lastAckedRange = convertToClientId(myProc.lastAckedRange);
+            myProc.lastClaimedRange = convertToClientId(myProc.lastClaimedRange);
+            myProc.previousClaimedRange = convertToClientId(myProc.previousClaimedRange);
             callback(null, {proc: myProc});
         } else {
             callback("invalid_proc");
@@ -403,11 +475,15 @@ registerMessage<IPipeProcDestroyProcMessage["data"], IPipeProcDestroyProcMessage
         data,
         callback
     ) {
-        destroyProc(db, activeProcs, data.procName, function(err, myProc) {
+        destroyProc(db, activeProcs, data.procName, function(err, theProc) {
             if (err) {
                 callback((err && err.message) || "uknown_error");
             } else {
-                if (myProc) {
+                if (theProc) {
+                    const myProc = JSON.parse(JSON.stringify(theProc));
+                    myProc.lastAckedRange = convertToClientId(myProc.lastAckedRange);
+                    myProc.lastClaimedRange = convertToClientId(myProc.lastClaimedRange);
+                    myProc.previousClaimedRange = convertToClientId(myProc.previousClaimedRange);
                     callback(null, {proc: myProc});
                 } else {
                     callback("invalid_proc");
@@ -426,11 +502,15 @@ registerMessage<IPipeProcDisableProcMessage["data"], IPipeProcDisableProcMessage
         data,
         callback
     ) {
-        disableProc(db, activeProcs, data.procName, function(err, myProc) {
+        disableProc(db, activeProcs, data.procName, function(err, theProc) {
             if (err) {
                 callback((err && err.message) || "uknown_error");
             } else {
-                if (myProc) {
+                if (theProc) {
+                    const myProc = JSON.parse(JSON.stringify(theProc));
+                    myProc.lastAckedRange = convertToClientId(myProc.lastAckedRange);
+                    myProc.lastClaimedRange = convertToClientId(myProc.lastClaimedRange);
+                    myProc.previousClaimedRange = convertToClientId(myProc.previousClaimedRange);
                     callback(null, {proc: myProc});
                 } else {
                     callback("invalid_proc");
@@ -449,11 +529,15 @@ registerMessage<IPipeProcResumeProcMessage["data"], IPipeProcResumeProcMessageRe
         data,
         callback
     ) {
-        resumeProc(db, activeProcs, data.procName, function(err, myProc) {
+        resumeProc(db, activeProcs, data.procName, function(err, theProc) {
             if (err) {
                 callback((err && err.message) || "uknown_error");
             } else {
-                if (myProc) {
+                if (theProc) {
+                    const myProc = JSON.parse(JSON.stringify(theProc));
+                    myProc.lastAckedRange = convertToClientId(myProc.lastAckedRange);
+                    myProc.lastClaimedRange = convertToClientId(myProc.lastClaimedRange);
+                    myProc.previousClaimedRange = convertToClientId(myProc.previousClaimedRange);
                     callback(null, {proc: myProc});
                 } else {
                     callback("invalid_proc");
@@ -476,7 +560,9 @@ registerMessage<IPipeProcReclaimProcMessage["data"], IPipeProcReclaimProcMessage
             if (err) {
                 callback((err && err.message) || "uknown_error");
             } else {
-                callback(null, {lastClaimedRange: lastClaimedRange || ""});
+                callback(null, {
+                    lastClaimedRange: lastClaimedRange ? convertToClientId(lastClaimedRange) : ""
+                });
             }
         });
     }

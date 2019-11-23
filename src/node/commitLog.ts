@@ -2,6 +2,7 @@ import debug from "debug";
 import {LevelDown as LevelDOWN} from "leveldown";
 import {IActiveTopics} from "./pipeProc";
 import {transaction} from "./transaction";
+import {incrementCurrentTone, ZERO_TONE} from "./tones";
 
 const d = debug("pipeproc:node");
 
@@ -44,16 +45,17 @@ export function preCommit(
     if (!activeTopics[log.topic]) {
         activeTopics[log.topic] = {
             createdAt: creationTime,
-            currentTone: -1
+            currentTone: ZERO_TONE
         };
         tx.add([
             {key: `~~system~~#activeTopics#${log.topic}`, value: `${creationTime}`},
-            {key: `~~system~~#currentTone#${log.topic}`, value: "-1"}
+            {key: `~~system~~#currentTone#${log.topic}`, value: ZERO_TONE}
         ]);
     }
-    const id = `${creationTime}-${activeTopics[log.topic].currentTone + 1}`;
+    const nextTone = incrementCurrentTone(activeTopics[log.topic].currentTone);
+    const id = `${creationTime}-${nextTone}`;
     const key = `topic#${log.topic}#key#${id}`;
-    const idKey = `~~internal~~#topic#${log.topic}#idKey#${activeTopics[log.topic].currentTone + 1}`;
+    const idKey = `~~internal~~#topic#${log.topic}#idKey#${nextTone}`;
 
     tx.add([{
         key: key,
@@ -63,9 +65,9 @@ export function preCommit(
         value: key
     }, {
         key: `~~system~~#currentTone#${log.topic}`,
-        value: `${activeTopics[log.topic].currentTone + 1}`
+        value: nextTone
     }]);
-    activeTopics[log.topic].currentTone += 1;
+    activeTopics[log.topic].currentTone = nextTone;
 
     tx.done(function() {
         return id;

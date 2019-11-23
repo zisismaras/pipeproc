@@ -534,7 +534,7 @@ describe("with a numeric offset", function() {
             } else {
                 if (ids && Array.isArray(ids)) {
                     addedIds = ids;
-                    numericOffset = ":0";
+                    numericOffset = ":1";
                     done();
                 } else {
                     done.fail("Invalid logs created");

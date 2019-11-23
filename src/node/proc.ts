@@ -175,7 +175,7 @@ function topicHasNewLogs(activeTopics: IActiveTopics, myProc: IProc) {
     //get the last acked id
     const lastAck = parseInt(myProc.lastAckedRange.split("-")[1]);
     //check if we have new logs after our lastAck
-    if (myTopic.currentTone > lastAck) {
+    if (parseInt(myTopic.currentTone) > lastAck) {
         return true;
     } else {
         return false;
