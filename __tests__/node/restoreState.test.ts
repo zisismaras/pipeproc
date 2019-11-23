@@ -81,8 +81,8 @@ describe("system init (disk)", function() {
             expect(systemState.active).toBeTrue();
             expect(newActiveTopics).toContainKey("my_topic_0");
             expect(newActiveTopics).toContainKey("my_topic_1");
-            expect(newActiveTopics.my_topic_0.currentTone).toBe("0000000000000003");
-            expect(newActiveTopics.my_topic_1.currentTone).toBe("0000000000000003");
+            expect(newActiveTopics.my_topic_0.currentTone).toEndWith("03");
+            expect(newActiveTopics.my_topic_1.currentTone).toEndWith("03");
             expect(activeProcs.length).toBe(newActiveProcs.length);
             expect(activeProcs[0]).toMatchObject(newActiveProcs[0]);
             expect(activeSystemProcs.length).toBe(newActiveSystemProcs.length);

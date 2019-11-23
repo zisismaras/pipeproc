@@ -4,6 +4,7 @@ import {forever, series} from "async";
 import {IActiveTopics, ISystemState} from "./pipeProc";
 import {IProc} from "./proc";
 import {ISystemProc} from "./systemProc";
+import {ZERO_TONE} from "./tones";
 
 const d = debug("pipeproc:node");
 
@@ -41,7 +42,7 @@ export function restoreState(
                     const topic = key.toString().split("~~system~~#activeTopics#")[1];
                     if (key.indexOf("~~system~~#activeTopics#") > -1 && topic) {
                         activeTopics[topic] = {
-                            currentTone: "0000000000000000",
+                            currentTone: ZERO_TONE,
                             createdAt: parseInt(value.toString())
                         };
                     }

@@ -5,7 +5,7 @@ import {IActiveTopics} from "../pipeProc";
 import {IProc} from "../proc";
 import {getRange} from "../getRange";
 import {transaction} from "../transaction";
-import {decrementCurrentTone} from "../commitLog";
+import {decrementCurrentTone, ZERO_TONE, FIRST_TONE} from "../tones";
 
 export function collect(
     db: LevelDOWN,
@@ -41,9 +41,6 @@ export function collect(
         toneId: string,
         ts: number
     }[] = [];
-
-    const ZERO_TONE = "0000000000000000";
-    const FIRST_TONE = "0000000000000001";
 
     //for topicsWithProcs find the smallest possible id processed by all of its procs
     Object.keys(topicsWithProcs).forEach(function(topicName) {

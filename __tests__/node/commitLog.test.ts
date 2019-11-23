@@ -6,6 +6,7 @@ import MemDOWN from "memdown";
 import {parallel} from "async";
 import {commitLog} from "../../src/node/commitLog";
 import {IActiveTopics} from "../../src/node/pipeProc";
+import {FIRST_TONE, SECOND_TONE} from "../../src/node/tones";
 
 const LOG_ID_FORMAT = /^([0-9]{13}-[0-9]+)$/;
 
@@ -30,7 +31,7 @@ describe("add a single log", function() {
             body: "{\"myData\": 1}"
         }, function(err, id) {
             if (err) return done.fail(err);
-            expect((<string>id).split("-")[1]).toBe("0000000000000001");
+            expect((<string>id).split("-")[1]).toBe(FIRST_TONE);
             done();
         });
     });
@@ -46,7 +47,7 @@ describe("add a single log", function() {
                 body: "{\"myData\": 2}"
             }, function(err, id) {
                 if (err) return done.fail(err);
-                expect((<string>id).split("-")[1]).toBe("0000000000000002");
+                expect((<string>id).split("-")[1]).toBe(SECOND_TONE);
                 done();
             });
         });

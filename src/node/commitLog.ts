@@ -2,6 +2,7 @@ import debug from "debug";
 import {LevelDown as LevelDOWN} from "leveldown";
 import {IActiveTopics} from "./pipeProc";
 import {transaction} from "./transaction";
+import {incrementCurrentTone, ZERO_TONE} from "./tones";
 
 const d = debug("pipeproc:node");
 
@@ -44,11 +45,11 @@ export function preCommit(
     if (!activeTopics[log.topic]) {
         activeTopics[log.topic] = {
             createdAt: creationTime,
-            currentTone: "0000000000000000"
+            currentTone: ZERO_TONE
         };
         tx.add([
             {key: `~~system~~#activeTopics#${log.topic}`, value: `${creationTime}`},
-            {key: `~~system~~#currentTone#${log.topic}`, value: "-1"}
+            {key: `~~system~~#currentTone#${log.topic}`, value: ZERO_TONE}
         ]);
     }
     const nextTone = incrementCurrentTone(activeTopics[log.topic].currentTone);
@@ -73,22 +74,4 @@ export function preCommit(
     }, "commits");
 
     return tx;
-}
-
-export function incrementCurrentTone(currentTone: string): string {
-    const parsed = String(parseInt(currentTone) + 1);
-    const zerosToFill = 16 - parsed.length;
-
-    return (new Array(zerosToFill)).fill("0").join("") + parsed;
-}
-
-export function decrementCurrentTone(currentTone: string): string {
-    const tone = parseInt(currentTone) - 1;
-    if (tone <= 0) {
-        return (new Array(16)).fill("0").join("");
-    }
-    const parsed = String(tone);
-    const zerosToFill = 16 - parsed.length;
-
-    return (new Array(zerosToFill)).fill("0").join("") + parsed;
 }

@@ -2,6 +2,7 @@ import debug from "debug";
 import {LevelDown as LevelDOWN, Bytes} from "leveldown";
 import {forever, series, setImmediate as asyncImmediate} from "async";
 import {IActiveTopics} from "./pipeProc";
+import {zeroPad} from "./tones";
 
 const d = debug("pipeproc:node");
 const VALID_RANGE_INPUT = /^(([0-9]*)|(:{0,1}[0-9]+)|([0-9]+-[0-9]+))$/;
@@ -57,7 +58,7 @@ export function getRange(
             if (start.match(/:[0-9]+/)) {
                 sdo.isStartIdSearch = true;
                 let parsed = start.replace(":", "");
-                parsed = (new Array(16 - parsed.length)).fill("0").join("") + parsed;
+                parsed = zeroPad(parsed);
                 const idKey = `~~internal~~#topic#${topic}#idKey#${parsed}`;
                 d("doing id search for start, idKey:", idKey);
                 db.get(idKey, {asBuffer: false}, function(err, value) {
@@ -79,7 +80,7 @@ export function getRange(
             if (end.match(/:[0-9]+/)) {
                 sdo.isEndIdSearch = true;
                 let parsed = end.replace(":", "");
-                parsed = (new Array(16 - parsed.length)).fill("0").join("") + parsed;
+                parsed = zeroPad(parsed);
                 const idKey = `~~internal~~#topic#${topic}#idKey#${parsed}`;
                 d("doing id search for end, idKey:", idKey);
                 db.get(idKey, {asBuffer: false}, function(err, value) {

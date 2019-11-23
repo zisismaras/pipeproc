@@ -37,7 +37,7 @@ import {
     prepareMessage,
     IPipeProcAvailableProcMessageReply
 } from "../common/messages";
-import {commitLog, incrementCurrentTone} from "./commitLog";
+import {commitLog} from "./commitLog";
 import {restoreState} from "./restoreState";
 import {runShutdownHooks} from "./shutdown";
 import {getRange} from "./getRange";
@@ -54,6 +54,7 @@ import {reclaimProc} from "./reclaimProc";
 import {collect} from "./gc/collect";
 import {waitForProcs} from "./waitForProcs";
 import {ServerSocket} from "../socket/bind";
+import {convertToClientId, convertRangeParams} from "./tones";
 
 const d = debug("pipeproc:node");
 
@@ -628,29 +629,3 @@ const shutdownListener = function(e: IPipeProcMessage) {
 process.on("message", initIPCListener);
 process.on("message", shutdownListener);
 stopWriteBuffer = startWriteBuffer(writeBuffer);
-
-function convertToClientId(nodeId: string): string {
-    if (!nodeId) return nodeId;
-    return nodeId.split("..").map(function(id) {
-        const idParts = id.split("-");
-        const parsedId = parseInt(idParts[1]);
-        if (parsedId <= 0) {
-            return `${idParts[0]}-0`;
-        } else {
-            return `${idParts[0]}-${parsedId - 1}`;
-        }
-    }).join("..");
-}
-
-function convertRangeParams(param: string): string {
-    if (!param) return param;
-    if (param.includes(":")) {
-        const parsed = parseInt(param.replace(":", ""));
-        return `:${parsed + 1}`;
-    } else if (param.includes("-")) {
-        const parts = param.split("-");
-        return `${parts[0]}-${incrementCurrentTone(parts[1])}`;
-    } else {
-        return param;
-    }
-}
