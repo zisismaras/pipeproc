@@ -32,6 +32,18 @@ export function bind(
     },
     callback: (err: Error | null, socketServer?: ServerSocket) => void
 ) {
+    //tslint:disable no-any
+    const messageListeners: MessageListener<any>[] = [];
+    //tslint:enable no-any
+    const socketMap: Map<Socket | TLSSocket, Binder> = new Map();
+    const server = options.tls ? createTlsServer({
+        ca: options.tls.ca,
+        key: options.tls.key,
+        cert: options.tls.cert,
+        requestCert: true,
+        rejectUnauthorized: true
+    }, connectionHandler) : createServer(connectionHandler);
+
     function connectionHandler(socket: Socket | TLSSocket) {
         d("new connection", socket.address());
         const binder = createBinder(socket);
@@ -65,17 +77,7 @@ export function bind(
             });
         });
     }
-    //tslint:disable no-any
-    const messageListeners: MessageListener<any>[] = [];
-    //tslint:enable no-any
-    const socketMap: Map<Socket | TLSSocket, Binder> = new Map();
-    const server = options.tls ? createTlsServer({
-        ca: options.tls.ca,
-        key: options.tls.key,
-        cert: options.tls.cert,
-        requestCert: true,
-        rejectUnauthorized: true
-    }, connectionHandler) : createServer(connectionHandler);
+
     const socketServer: ServerSocket = {
         close: function() {
             if (address.includes("ipc://")) {

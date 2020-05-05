@@ -88,13 +88,7 @@ npm install --save pipeproc
 
 ## Status
 
-> Linux  
-[![Build Status](https://dev.azure.com/zisismaras/pipeproc/_apis/build/status/zisismaras.pipeproc.linux)](https://dev.azure.com/zisismaras/pipeproc/_build/latest?definitionId=4)  
-> OSX  
-[![Build Status](https://dev.azure.com/zisismaras/pipeproc/_apis/build/status/zisismaras.pipeproc.mac)](https://dev.azure.com/zisismaras/pipeproc/_build/latest?definitionId=5)  
-> Windows  
-[![Build Status](https://dev.azure.com/zisismaras/pipeproc/_apis/build/status/zisismaras.pipeproc.windows)](https://dev.azure.com/zisismaras/pipeproc/_build/latest?definitionId=6)  
-> npm  
+![Test Suite](https://github.com/zisismaras/pipeproc/workflows/Test%20Suite/badge.svg) 
 [![npm version](https://badge.fury.io/js/pipeproc.svg)](https://badge.fury.io/js/pipeproc)
 
 ## Process management

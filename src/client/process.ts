@@ -46,6 +46,7 @@ export function spawn(
         //@ts-ignore
         fork: true,
         watch: false,
+        //@ts-ignore
         spawnWith: {detached: true},
         args: ["--color"],
         max: 3
@@ -238,8 +239,8 @@ export function shutdown(
                 callback(new Error(e.errStatus || "uknown_error"));
             }
         };
-        (<Monitor>client.pipeProcNode).child.on("message", systemClosedListener);
-        (<Monitor>client.pipeProcNode).child.send(shutDownMessage);
+        client.pipeProcNode.child.on("message", systemClosedListener);
+        client.pipeProcNode.child.send(shutDownMessage);
     } else if (client.pipeProcNode) {
         d("disconnected");
         delete client.pipeProcNode;

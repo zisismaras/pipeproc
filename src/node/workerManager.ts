@@ -100,7 +100,7 @@ export function spawnWorkers(
         });
     }, function(err) {
         if (err) {
-            callback(<Error>err);
+            callback(err);
         } else {
             callback();
         }

@@ -73,7 +73,8 @@
         "cyclomatic-complexity": false,
         "max-line-length": false,
         "no-non-null-assertion": false,
-        "prefer-array-literal": false
+        "prefer-array-literal": false,
+        "linebreak-style": false
     },
     "jsRules": {
         "max-line-length": {
