@@ -123,6 +123,7 @@ describe("committing logs", function() {
         //@ts-ignore
         client.commit({
             topic: "my_topic",
+            //@ts-ignore
             body: 123
         }).then(function() {
             done.fail("it should not accept invalid log bodies");

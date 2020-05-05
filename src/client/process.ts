@@ -46,6 +46,7 @@ export function spawn(
         //@ts-ignore
         fork: true,
         watch: false,
+        //@ts-ignore
         spawnWith: {detached: true},
         args: ["--color"],
         max: 3
