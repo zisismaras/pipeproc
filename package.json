@@ -75,11 +75,11 @@
     "@types/leveldown": "4.0.2",
     "@types/node": "12.12.6",
     "@types/uuid": "3.4.3",
-    "@types/forever-monitor": "1.7.5",
+    "@types/forever-monitor": "1.7.4",
     "async": "3.1.0",
     "backoff": "2.5.0",
     "debug": "3.1.0",
-    "forever-monitor": "2.0.0",
+    "forever-monitor": "1.7.1",
     "leveldown": "5.6.0",
     "memdown": "5.1.0",
     "uuid": "3.3.2"
