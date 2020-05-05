@@ -153,7 +153,7 @@ export function collect(
         //     });
         // }
     ], function(err) {
-        if (err) return callback(<Error>err);
+        if (err) return callback(err);
         callback();
     });
 
